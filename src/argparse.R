@@ -19,7 +19,7 @@ option_list = list(
               help = 'rate constant of activity change'),
   make_option(c('-c', '--c'), type = 'double', default = c,
               help = 'ligand concentration in units of Koff'),
-  make_option(c('-m', '--met'), type = 'character', default = 'y',
+  make_option(c('-m', '--met'), type = 'character', default = 'RB+',
               help = 'simulate methylation?'),
   make_option(c('-a', '--kR'), type = 'double', default = kR,
               help = 'methylation rate constant'),
@@ -29,10 +29,12 @@ option_list = list(
               help = 'total number of methylation sites per CSU'),
   make_option(c('-l', '--lattice'), type = 'character', default = 'Kagome',
               help = 'specify lattice structure (script name in src/{l}.R)'),
-  make_option(c('-k', '--rep'), type = 'integer', default = 1,
+  make_option(c('-k', '--rep'), type = 'integer', default = 10,
               help = 'simulation replicate ID'),
   make_option(c('-x', '--X'), type = 'integer', default = X,
-              help = 'lattice size (1D)')
+              help = 'lattice size (1D)'),
+  make_option(c('-n', '--cores'), type = 'integer', default = 1,
+              help = 'number of cores for parallel execution of simulation')
 )
 
 opt_parser = OptionParser(option_list=option_list)
@@ -49,6 +51,7 @@ Mtot = opt$Mtot
 lattice = opt$lattice
 rep = opt$rep
 X = opt$X
+cores = opt$cores
 
 # format coupling energies
 if (str_detect(J, '-')) {
@@ -57,6 +60,7 @@ if (str_detect(J, '-')) {
 } else {
   J = as.numeric(J)
 }
+opt$J = J
 
 # shorter simulations for dose-response
 if (c != 0) {
@@ -64,11 +68,16 @@ if (c != 0) {
 }
 
 # with/without methylation
-if (met == 'n') {
+if (met == 'RB-') {
   kR = 0
   kB = 0
   Mtot = 12
+  
+  opt$Mtot = Mtot
+  opt$kR = kR
+  opt$kB = kB
 }
+
 # express Kon and c in units of Koff
 Kon_ = Kon/Koff
 
@@ -76,6 +85,7 @@ Kon_ = Kon/Koff
 if (lattice != 'Kagome') {
   x = X^2-.25*X^2
   X = sqrt(x) %>% ceiling() %>% format(digits = 0) %>% as.numeric()
+  opt$X = X
 }
 
 # ----- create output folder -----
@@ -91,7 +101,7 @@ save(opt, file = paste0(outfol, 'CMDs.RData'))
 # ----- print all current parameters -----
 
 print('-------------------------------------------------')
-print('running simulation with the following parameters:')
+print('running with the following parameters:')
 print('-------------------------------------------------')
 print(unlist(opt))
 print('-------------------------------------------------')

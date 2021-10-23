@@ -121,6 +121,10 @@ getNeighbors.Kagome = function(L, X) {
     }
   }
   
+  if (!all(names(adjL) == c(1:n))) {
+    print('adjacency list elements are not ordered !!!')
+  }
+  
   if (! length(adjL) == n) {
     print('!!! adjacency list is incomplete !!!')
   }

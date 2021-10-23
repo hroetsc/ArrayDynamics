@@ -16,6 +16,10 @@ if(!dir.exists(paste0(outfol, 'GIFs/'))) {
   dir.create(paste0(outfol, 'GIFs/'))
 }
 
+print('--------------------------------')
+print('VISUALISATION OF ARRAY BEHAVIOUR')
+print('--------------------------------')
+
 
 ### INPUT ###
 load(paste0(outfol,
@@ -122,3 +126,7 @@ system(paste0('convert -delay ', ceiling(d), ' SIMresultsA_c', c, '_met-', met, 
 system(paste0('convert -delay ', ceiling(d), ' SIMresultsM_c', c, '_met-', met, '_rep', rep, '.gif', ' SIMresultsM_c', c, '_met-', met, '_rep', rep, '.gif'))
 
 setwd('~/Documents/SYNMICRO/')
+
+### OUTPUT ###
+write(paste0('plotting grids finished sucessfully at ', Sys.time()),
+      file = paste0('logs/plotgrids_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))

@@ -1,0 +1,193 @@
+### ARRAY DYNAMICS SIMULATION ###
+# input:        PSDs for c=0 (simulated and experimental)
+# output:       activity fluctuation parameter overview
+# description:  visualise the system's activity fluctuation over different parameters
+#               and compare with experimental data
+# author:       HR
+
+
+library(dplyr)
+library(stringr)
+library(lattice)
+library(ggplot2)
+library(ggplotify)
+library(ggpubr)
+library(gridExtra)
+library(RColorBrewer)
+library(latex2exp)
+
+source('src/argparse.R')
+source(paste0('src/', lattice, '.R'))
+
+spectralRamp = brewer.pal(11, "Spectral") %>%
+  colorRampPalette()
+spectral5000 = spectralRamp(5000)
+
+theme_set(theme_classic())
+
+
+### INPUT ###
+# load('results/PSD_experiments.RData')
+load(snakemake@input[['PSDexp']])
+
+fs = Sys.glob('results/SIMresults/*/PSD/A_c0_met-*.RData')
+fs = fs[str_detect(fs, paste0('met-',met))]
+fs = fs[str_detect(fs, lattice)]
+
+
+### MAIN PART ###
+# ----- extract simulation parameters, PSDs and PSD characteristics -----
+
+extractPARAMS = function(f, ret_psd) {
+  
+  load(f)
+  params = str_split(f, pattern = '/', simplify = T)[,3]
+  J = str_extract(params, pattern = 'J0.[^_]+') %>%
+    str_remove('J') %>%
+    as.numeric()
+  
+  r0 = str_extract(params, pattern = 'r[^$]+') %>%
+    str_remove('r') %>%
+    as.numeric()
+  
+  psd_params = plyr::ldply(PSDchar$allParams)
+  psd_params = apply(psd_params, 2, mean)
+  
+  if (ret_psd) {
+    
+    psd = plyr::ldply(PSDchar$PSDs)
+    psd = t(psd)
+    x = reshape2::melt(psd)
+    x$Var2 = NULL
+    names(x) = c('freq', 'psd')
+    
+    x$J = J
+    x$r0 = r0
+    x$Smax = psd_params[1]
+    x$wmax = psd_params[2]
+    x$w12 = psd_params[3]
+    
+    return(x)
+    
+  } else {
+    
+    out = c(J=J, r0=r0, psd_params)
+    return(out)
+  }
+}
+
+
+PAR = list()
+PSD = list()
+
+for (i in 1:length(fs)) {
+  f = fs[i]
+  PAR[[i]] = extractPARAMS(f, ret_psd=F)
+  PSD[[i]] = extractPARAMS(f, ret_psd=T)
+}
+
+PAR = plyr::ldply(PAR)
+PSD = plyr::ldply(PSD)
+
+# ----- grid of PSDs -----
+no_rs = unique(PSD$r0) %>% length()
+no_Js = unique(PSD$J) %>% length()
+x = mean(no_Js, no_rs) - 1
+
+PSD$group = as.factor(PSD$r0*PSD$J)
+
+p = ggplot(PSD, aes(x=freq, y=psd, col=group)) +
+  geom_smooth(aes(group=group)) +
+  scale_color_viridis_d() +
+  ylab(TeX("$log_{10}(A_{R}(\\omega))(s)$")) +
+  xlab(TeX("$log_{10}(\\frac{\\omega}{2 \\cdot \\pi})(Hz)$")) +
+  xlim(c(-3.5, -1.5)) +
+  theme(aspect.ratio = 1, legend.position = 'none')
+
+gr = p + 
+  geom_point(aes(x=wmax, y=Smax)) +
+  geom_vline(aes(xintercept=w12), linetype='dashed') +
+  facet_grid(J~r0)
+cs = p + facet_grid(J~.)
+rws = p + facet_grid(.~r0)
+
+
+pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_rs-1,1)),
+          ggarrange(gr, cs, ncol = 2, widths = c(no_rs-3,1)),
+          align = 'hv',
+          heights = c(1,no_Js-1),
+          nrow = 2)
+
+# ggexport(pn, filename = paste0('results/PSD_simulations_', lattice, '_met-', met, '.pdf'),
+#          dpi = 'retina')
+
+pdf(paste0('results/PSD_simulations_', lattice, '_met-', met, '.pdf'),
+    height = 16, width = 16)
+print(pn)
+dev.off()
+
+
+# ----- heatmaps -----
+PAR$group = NULL
+
+# format results
+Js = sort(PAR$J) %>% unique()
+r0s = sort(PAR$r0) %>% unique()
+
+m = array(NA, dim = c(length(Js), length(r0s), ncol(PAR)-2),
+          dimnames = list(Js, r0s, names(PAR)[3:ncol(PAR)]))
+
+for (c in 1:(ncol(PAR)-2)) {
+
+  for (j.1 in Js) {
+    for (r.1 in r0s) {
+      
+      k = which(PAR$J == j.1 & PAR$r0 == r.1)
+      if (length(k) > 0) {
+        m[which(dimnames(m)[[1]] == j.1),which(dimnames(m)[[2]] == r.1),c] = PAR[k, c+2]
+      }
+      
+    }
+  } 
+   
+}
+
+# plotting
+
+plotMATRIX = function(cnt, param) {
+  
+  tr = if (met == 'y') {
+    allParams$`RB+, QEQE`[names(allParams$`RB+, QEQE`) == param]
+    } else {
+    allParams$`RB-, QEQE, 30um MeAsp`[names(allParams$`RB-, QEQE, 30um MeAsp`) == param]
+    }
+  
+  h = levelplot(cnt %>% t(),
+                col.regions=spectral5000,
+                panel = function(...) {
+                  panel.fill(col = "white")
+                  panel.levelplot(...)
+                },
+                main=param,
+                sub=paste0('experiments: ', tr %>% round(4) %>% as.character()),
+                xlab='r0',
+                ylab='J')
+  
+  return(as.grob(h))
+}
+
+t = paste0('lattice: ', lattice, ', methylation: ', met)
+
+hm = grid.arrange(plotMATRIX(cnt = m[,,1], param = dimnames(m)[[3]][1]),
+             plotMATRIX(cnt = m[,,2], param = dimnames(m)[[3]][2]),
+             plotMATRIX(cnt = m[,,3], param = dimnames(m)[[3]][3]),
+             nrow=1, top=t)
+ggsave(filename = paste0('results/PSD_simulations_', lattice, '_met-', met, '_params.pdf'),
+       plot = hm, device = cairo_pdf(), height = 4, width = 12,
+       dpi = 'retina')
+
+
+### OUTPUT ###
+write(paste0('aggregation of PSDs finished sucessfully at ', Sys.time()),
+      file = unlist(snakemake@output[['agg_psd']]))
+

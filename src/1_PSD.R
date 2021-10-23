@@ -14,10 +14,17 @@ if(!dir.exists(paste0(outfol, 'PSD/'))) {
   dir.create(paste0(outfol, 'PSD/'))
 }
 
+print('---------------------------------------------------------')
+print('CALCULATE POWER SPECTRAL DENSITY OF ACTIVITY FLUCTUATIONS')
+print('---------------------------------------------------------')
+
+
 ### INPUT ###
 setwd(paste0(outfol, 'PSD/'))
 getwd()
 
+# pick simulations where avg. A is 0.5
+# M0=12 RB- <==> c=0
 load(paste0('../fluct/A_c0_met-', met, '.RData'))
 
 
@@ -34,9 +41,18 @@ calcPSD = function(meanA) {
   y = seq(0,1-1/N,1/N)
   
   # smoothen x
-  x = smooth(x, kind = '3RSS')
-  names(x) = y
+  # x = smooth(x, kind = '3RSS')
   
+  # convert to log scale
+  y = log10(y)
+  x = log10(x)
+  
+  # cut off for very low and very high frequencies
+  # m = which((y > -3.5) & (y < -1.5))
+  y = y[2:(N/2 +1)]
+  x = x[2:(N/2 +1)]
+  
+  names(x) = y
   return(x)
 }
 
@@ -44,48 +60,25 @@ PSDs = lapply(ovA, calcPSD)
 
 # ----- characterise PSD -----
 
-# maximal S_R
-# frequency of maximal S_R
-# integral of function until S_R decreases
-
-logS = sapply(PSDs, log10)
-logw = sapply(PSDs, function(x){
-  log10(as.numeric(names(x))/(2*pi))
-})
-
-rm = which(!is.finite(logw))
-if (length(rm) > 0) {
-  logS = logS[-rm, ]
-  logw = logw[-rm, ]
+characterisePSD = function(freq, psd) {
+  
+  # maximum PSD + corresponding frequency
+  Smax = max(psd)
+  wmax = freq[which(psd == Smax)]
+  
+  psdnorm = (psd-min(psd)) / (max(psd) - min(psd))
+  # psdnorm = (psd-min(psd)) / sum(psd)
+  
+  # frequency at which half of the integral is reached
+  S12 = sum(psdnorm) / 2
+  w12 = freq[which(cumsum(psdnorm) >= S12)[1]]
+  
+  out = c(Smax = Smax,
+          wmax = wmax,
+          w12 = w12)
+  
+  return(out)
 }
-
-# only consider 1st half of the spectrum
-logS = logS[c(1:ceiling(nrow(logS)/2)),]
-logw = logS[c(1:ceiling(nrow(logw)/2)),]
-
-max_S = apply(logS, 2, function(S) {
-  S[which(S == max(S))][1]
-}) %>%
-  unlist()
-
-max_w = logw[apply(logS, 2, function(S){
-  which(S == max(S))[1]
-}) %>% unlist()]
-
-
-# integral
-tol = 1/abs(max_S) * 0.02
-
-integrals = rep(NA, length(tol))
-for (j in 1:length(tol)) {
-  i = 1
-  while (logS[i+1,j] > (logS[i,j]-tol[j]) & logS[i+1,j] < (logS[i,j]+tol[j])) {
-    i = i+1
-  }
-  integrals[j] = sum(logS[1:i,j])
-  names(integrals)[j] = i
-}
-
 
 #----- plotting -----
 cols = heat.colors(length(PSDs), alpha = .5)
@@ -94,72 +87,45 @@ png(paste0('A_c0_met-', met, '.png'),
     width = 9, height = 5, units = 'in',
     res = 300)
 
-x = PSDs[[1]]
-
-cntx = log10(as.numeric(names(x))/(2*pi))
-cnty = log10(x)
-
-ymin = floor(min(cnty))
-ymax = ceiling(max(cnty))
-
-rm = which(!is.finite(cntx))
-if (length(rm) > 0) {
-  cntx = cntx[-rm]
-  cnty = cnty[-rm]
-}
-
-plot(cntx, cnty,
-     type='l',
-     ylab = TeX("$log_{10}(A_{R}(\\omega))(s)$"),
-     xlab = TeX("$log_{10}(\\frac{\\omega}{2 \\cdot \\pi})(Hz)$"),
-     ylim = c(ymin, ymax),
-     col = cols[1])
-
-points(max_w[1], max_S[1], pch=16, cex=1.2, col=cols[1])
-
-polygon(x = c(cntx[1],
-              cntx[1:as.numeric(names(integrals))[1]],
-              cntx[as.numeric(names(integrals))[1]]),
-        y = c(ymin,
-              cnty[1:as.numeric(names(integrals))[1]],
-              ymin),
-        col = cols[1], border = NA)
-
-if(length(PSDs) > 1) {
-  for (i in 2:length(PSDs)) {
+allParams = list()
+for (ii in 1:length(PSDs)) {
+  
+  cnt = PSDs[[ii]]
+  psdchar = characterisePSD(freq = as.numeric(names(cnt)), psd = cnt)
+  
+  if (ii == 1) {
     
-    x = PSDs[[i]]
-    cntx = log10(as.numeric(names(x))/(2*pi))
-    cnty = log10(x)
+    plot(y=cnt, x=as.numeric(names(cnt)),
+         ylab = TeX("$log_{10}(A_{R}(\\omega))(s)$"),
+         xlab = TeX("$log_{10}(\\frac{\\omega}{2 \\cdot \\pi})(Hz)$"),
+         ylim = c(min(cnt)-1, max(cnt)+1),
+         type = 'l', col=cols[ii])
     
-    rm = which(!is.finite(cntx))
-    if (length(rm) > 0) {
-      cntx = cntx[-rm]
-      cnty = cnty[-rm]
-    }
-    
-    lines(cntx, cnty,
-         type='l', col = cols[i])
-    
-    points(max_w[i], max_S[i], pch=16, cex=1.2, col=cols[i])
-    
-    polygon(x = c(cntx[1],
-                  cntx[1:as.numeric(names(integrals))[i]],
-                  cntx[as.numeric(names(integrals))[i]]),
-            y = c(ymin,
-                  cnty[1:as.numeric(names(integrals))[i]],
-                  ymin),
-            col = cols[i], border = NA)
-    
+  } else {
+    lines(y=cnt, x=as.numeric(names(cnt)),
+          col=cols[ii])
   }
+  
+  points(y=psdchar[1],x=psdchar[2],
+         pch = 16,cex=1.2,col=cols[ii])
+  abline(v=psdchar[3], lty='dashed', col=cols[ii])
+  
+  allParams[[ii]] = psdchar
 }
 
 dev.off()
 
 ### OUTPUT ###
 
-PSDchar = list(PSDs = PSDs)
+PSDchar = list(PSDs = PSDs,
+               allParams = allParams)
 
 save(PSDchar, file = paste0('A_c0_met-', met, '.RData'))
 setwd('~/Documents/SYNMICRO/')
+
+
+write(paste0('calculating PSDs finished sucessfully at ', Sys.time()),
+      file = paste0('logs/calculatepsd_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+
+
 

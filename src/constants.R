@@ -20,6 +20,9 @@ cT = TIME/2  # time after which ligand is spiked in
 
 epsilon = 1e-06  # some noise
 
+# conversion factor between FRET ratio and activity
+lambda = 0.1
+
 # K_on and K_off - Asp
 # # Vladimirov et al., PLOS Comp. Biol. 2008
 # Kon = 12  # uM

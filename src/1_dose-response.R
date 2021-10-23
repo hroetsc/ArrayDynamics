@@ -1,5 +1,5 @@
 ### ARRAY DYNAMICS SIMULATION ###
-# input:        overall acitivity over time for different concentrations
+# input:        overall acitivity + methylation over time for different concentrations
 # output:       dose-response characteristic
 # description:  system's response to perturbation (ligand concentration)
 #               - logarithmic model
@@ -19,19 +19,28 @@ if(!dir.exists(paste0(outfol, 'dose-response/'))) {
   dir.create(paste0(outfol, 'dose-response/'))
 }
 
+print('----------------------------------------------------------')
+print('CALCULATE DOSE-RESPONSE BEHAVIOUR OF ARRAY TO PERTURBATION')
+print('----------------------------------------------------------')
+
+
 ### INPUT ###
 setwd(paste0(outfol, 'dose-response/'))
 getwd()
 
 fs = list.files(path = '../fluct', pattern = 'A_c*',
                 recursive = F, full.names = T)
-
+fs.M = list.files(path = '../fluct', pattern = 'M_c*',
+                recursive = F, full.names = T)
 
 ### MAIN PART ###
 # remove zero-concentration
 # select correct methylation
 # fs = fs[-which(str_detect(fs, 'c0_'))]
 fs = fs[which(str_detect(fs, paste0('met-', met)))]
+
+# fs.M = fs.M[-which(str_detect(fs.M, 'c0_'))]
+fs.M = fs.M[which(str_detect(fs.M, paste0('met-', met)))]
 
 # ----- get concentrations -----
 print(fs)
@@ -46,25 +55,39 @@ pick.Steady = function(meanA) {
   return(mean(x))
 }
 
-CONS = list()
+
+CONS = list(activity = list(),
+            methylation = list())
+
 for (f in 1:length(fs)) {
   
   load(fs[f])
+  load(fs.M[f])
   
   cntA = lapply(ovA, pick.Steady)
-  CONS[[f]] = cntA %>% unlist() %>% as.numeric()
+  cntM = lapply(ovM, pick.Steady)
   
+  CONS[['activity']][[f]] = cntA %>% unlist() %>% as.numeric()
+  CONS[['methylation']][[f]] = cntM %>% unlist() %>% as.numeric()
 }
 
-names(CONS) = cs
-a = unlist(CONS)
 
-a.m = sapply(CONS, mean)
-a.sd = sapply(CONS, sd)
+names(CONS[['activity']]) = cs
+a = unlist(CONS[['activity']])
+a.m = sapply(CONS[['activity']], mean)
+a.sd = sapply(CONS[['activity']], sd)
 a.sd[is.na(a.sd)] = 0
 
+
+names(CONS[['methylation']]) = cs
+m = unlist(CONS[['methylation']])
+m.m = sapply(CONS[['methylation']], mean)
+m.sd = sapply(CONS[['methylation']], sd)
+m.sd[is.na(m.sd)] = 0
+
 # ----- fit logarithmic model -----
-dr = drm(a~rep(cs, each=length(CONS[[1]])), fct = LL.4())
+nrep = length(CONS[['activity']][[1]])
+dr = drm(a~rep(cs, each=nrep), fct = LL.4())
 
 fkt = function(coeff, cs) {
   b = coeff[1] %>% as.numeric()
@@ -99,80 +122,128 @@ dev.off()
 
 # ----- fit MWC model -----
 
-nrep = length(CONS[[1]])
-DA = data.frame(L0 = NA, L = NA, da = NA)
-for (r in 1:nrep) {
+fitMWC = function(a, m, cs, k0, k1, Kon_) {
+  c = rep(cs, each=nrep)
   
-  # get all activity changes for all ligand concentration changes
-  # matrix with L0 and L in rows and columns
-  # change from i --> j corresponds to L0 --> L
-  cnt = matrix(ncol = length(cs), nrow = length(cs))
-  colnames(cnt) = cs
-  rownames(cnt) = cs
-  for (i in 1:length(cs)) {
-    for (j in 1:length(cs)) {
-      cnt[i,j] = CONS[[j]][r] - CONS[[i]][r]
-    }
-  }
+  f0 = k0 - k1*m + log((1 + c) / (1 + c/Kon_))
+  fit = nls(a~1/(1+exp(N*f0)), start=list(N=4))
   
-  cnt = melt(cnt)
-  names(cnt) = c('L0', 'L', 'da')
+  N = environment(fit[["m"]][["fitted"]])[["internalPars"]]
   
-  DA = rbind(DA, cnt)
+  x = c
+  y = 1/(1+exp(N*f0))
+  
+  return(list(N=N, fit=fit, x=x, y=y))
 }
 
-DA = na.omit(DA)
-DA = DA[-which(DA$da == 0), ]
-DA = DA[which(DA$L > DA$L0), ]
+mwc.fit = fitMWC(a, m, cs, k0, k1, Kon_)
 
-MWC = function(L0, L, da, Kon, Koff, a0=0.5, n1=0, n2=100) {
-  
-  Ns = seq(n1, n2, length.out=1000)
-  
-  calcDa = function(N, L0, L, da, Kon, Koff, a0=0.5) {
-    Da = 1 / (1 + (1-a0)*((Koff+L0)^N)*(Kon+L)^N)
-    return(Da)
-  }
-  
-  DAs = rep(NA, length(Ns))
-  for (Ni in 1:length(Ns)) {
-    DAs[Ni] = calcDa(N=Ns[Ni], L0, L, da, Kon, Koff, a0=0.5)
-  }
-  
-  mse = (DAs-da)^2
-  bestN = Ns[which(mse == min(mse))]
-  
-  if (length(bestN) > 1) {
-    bestN = bestN[1]
-  }
-  
-  return(bestN)
-}
-
-DA$N = NA
-for (r in 1:nrow(DA)) {
-  DA$N[r] = MWC(L0=DA$L0[r], L=DA$L[r], da=DA$da[r],
-                Kon, Koff)
-}
-
-density(DA$N) %>% plot
-hist(DA$N, breaks=60)
-
-# plotting
+# plotting 
 png(paste0('A_Ns_met-', met, '.png'),
     width = 9, height = 5, units = 'in',
     res = 300)
-hist(DA$N,
-     breaks = 60, freq = F,
-     xlab = 'N', ylab = 'frequency',
-     main = '')
-lines(density(DA$N))
+
+plot(cs, a.m,
+     ylim = c(min(a.m, mwc.fit$y)-.1, max(a.m, mwc.fit$y)+.1),
+     pch = 16,
+     ylab = TeX('<A> $\\pm$ SD'), xlab = TeX('$\\frac{\\[MeAsp\\]}{K_{off}}$'),
+     main = TeX('$<A>_{MWC} = \\frac{1}{1 + exp(N \\cdot f_0)}$'),
+     sub = paste0('N=', round(mwc.fit$N, 4)))
+arrows(cs, a.m-a.sd, cs, a.m+a.sd, length=0.05, angle=90, code=3)
+
+points(mwc.fit$x, mwc.fit$y,
+       pch=8, col='firebrick', cex=.5)
+k = order(mwc.fit$x)
+lines(mwc.fit$x[k], mwc.fit$y[k], col='firebrick')
+
+legend('topright',
+       legend = c('simulated', 'fitted'),
+       col = c('black', 'firebrick'), pch = c(16, 8))
+
 dev.off()
+
 
 ### OUTPUT ###
 
-perturb = list(dr = dr,
-               N_MWC = DA)
+perturb = list(data = data.frame(cs=cs, a.m=a.m, a.sd=a.sd),
+               dr = dr,
+               MWC = mwc.fit)
 
 save(perturb, file = paste0('A_perturb_met-', met, '.RData'))
 setwd('~/Documents/SYNMICRO/')
+
+write(paste0('calculating dose-response curves finished sucessfully at ', Sys.time()),
+      file = paste0('logs/calculatedoseresponse_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+
+
+
+# nrep = length(CONS[[1]])
+# DA = data.frame(L0 = NA, L = NA, da = NA)
+# for (r in 1:nrep) {
+#   
+#   # get all activity changes for all ligand concentration changes
+#   # matrix with L0 and L in rows and columns
+#   # change from i --> j corresponds to L0 --> L
+#   cnt = matrix(ncol = length(cs), nrow = length(cs))
+#   colnames(cnt) = cs
+#   rownames(cnt) = cs
+#   for (i in 1:length(cs)) {
+#     for (j in 1:length(cs)) {
+#       cnt[i,j] = CONS[[j]][r] - CONS[[i]][r]
+#     }
+#   }
+#   
+#   cnt = melt(cnt)
+#   names(cnt) = c('L0', 'L', 'da')
+#   
+#   DA = rbind(DA, cnt)
+# }
+# 
+# DA = na.omit(DA)
+# DA = DA[-which(DA$da == 0), ]
+# DA = DA[which(DA$L > DA$L0), ]
+# 
+# MWC = function(L0, L, da, Kon, Koff, a0=0.5, n1=0, n2=100) {
+#   
+#   Ns = seq(n1, n2, length.out=1000)
+#   
+#   calcDa = function(N, L0, L, da, Kon, Koff, a0=0.5) {
+#     Da = 1 / (1 + (1-a0)*((Koff+L0)^N)*(Kon+L)^N)
+#     return(Da)
+#   }
+#   
+#   DAs = rep(NA, length(Ns))
+#   for (Ni in 1:length(Ns)) {
+#     DAs[Ni] = calcDa(N=Ns[Ni], L0, L, da, Kon, Koff, a0=0.5)
+#   }
+#   
+#   mse = (DAs-da)^2
+#   bestN = Ns[which(mse == min(mse))]
+#   
+#   if (length(bestN) > 1) {
+#     bestN = bestN[1]
+#   }
+#   
+#   return(bestN)
+# }
+# 
+# DA$N = NA
+# for (r in 1:nrow(DA)) {
+#   DA$N[r] = MWC(L0=DA$L0[r], L=DA$L[r], da=DA$da[r],
+#                 Kon, Koff)
+# }
+# 
+# density(DA$N) %>% plot
+# hist(DA$N, breaks=60)
+# 
+# # plotting
+# png(paste0('A_Ns_met-', met, '.png'),
+#     width = 9, height = 5, units = 'in',
+#     res = 300)
+# hist(DA$N,
+#      breaks = 60, freq = F,
+#      xlab = 'N', ylab = 'frequency',
+#      main = '')
+# lines(density(DA$N))
+# dev.off()
+# 

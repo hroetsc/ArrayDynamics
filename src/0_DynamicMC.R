@@ -7,9 +7,19 @@
 
 library(dplyr)
 library(reshape2)
+library(foreach)
+library(doParallel)
 
 source('src/argparse.R')
 source(paste0('src/', lattice, '.R'))
+
+
+print('------------------------------------------------')
+print('DYNAMIC MONTE CARLO SIMULATION OF ARRAY DYNAMICS')
+print('------------------------------------------------')
+
+
+registerDoParallel(cores = cores)
 
 # parameters ro infer: transition rate constant r_0
 # coupling energy J
@@ -24,7 +34,6 @@ source(paste0('src/', lattice, '.R'))
 initialiseA = function(X, L) {
   A = matrix(nrow = X, ncol = X)
   
-  set.seed(rep)
   for (x in 1:X) {
     A[x, ] = sample(x = c(0,1), size = X, replace = T)
   }
@@ -44,10 +53,9 @@ initialiseA = function(X, L) {
 initialiseM = function(X, L) {
   M = matrix(nrow = X, ncol = X)
   
-  set.seed(rep)
   for (x in 1:X) {
     
-    if (met == 'y') {
+    if (met == 'RB+') {
       M[x, ] = sample(x = seq(0,Mtot), size = X, replace = T)
     } else {
       M[x, ] = rep(Mtot, X)
@@ -69,7 +77,7 @@ initialiseM = function(X, L) {
 
 ##### calculate activity changes #####
 calcDeltaA = function(A) {
-  DeltaA = -1*(2*A-1)
+  DeltaA = 1-2*A
   return(DeltaA)
 }
 
@@ -98,7 +106,7 @@ calcJ = function(i, A, adjL, J) {
 } 
 
 ##### energy of activity state #####
-calcDeltaH = function(r_0, DeltaA, A, M, adjL, k0, k1, c, Kon_, J, idx = c(1:n), ln=NA) {
+calcDeltaH = function(DeltaA, A, M, adjL, k0, k1, c, Kon_, J, idx = c(1:n), ln=NA) {
   
   # free energy - calculate only once in case the concentration is non-zero
   if (is.na(ln)) {
@@ -121,7 +129,7 @@ calcDeltaH = function(r_0, DeltaA, A, M, adjL, k0, k1, c, Kon_, J, idx = c(1:n),
 
 ########## simulation ##########
 
-SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0){
+SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
   
   set.seed(rep)
   
@@ -142,7 +150,7 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0){
   # ----- calculate initial rates -----
   # activity rates
   ln = log((1 + c) / (1 + c/Kon_))
-  DeltaH = calcDeltaH(r_0, DeltaA, A, M, adjL, k0, k1, c=0, Kon_, J, ln=ln)
+  DeltaH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c=0, Kon_, J, ln=ln)
   rateA = r_0*exp(-1*DeltaH)
   
   # methylation rates only where methylation/demethylation can happen
@@ -197,13 +205,13 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0){
       
       # spike in ligand at single time point during simulation
       # if (cnt*dt == cT) {
-      #   newH = calcDeltaH(r_0, DeltaA, A, M, adjL, k0, k1, c=c, Kon_, J,
+      #   newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c=c, Kon_, J,
       #                     idx = c(j, k))
       # } else {
-      #   newH = calcDeltaH(r_0, DeltaA, A, M, adjL, k0, k1, c=0, Kon_, J,
+      #   newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c=0, Kon_, J,
       #                     idx = c(j, k), ln=ln)
       # }
-      newH = calcDeltaH(r_0, DeltaA, A, M, adjL, k0, k1, c, Kon_, J,
+      newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c, Kon_, J,
                         idx = c(j, k), ln=ln)
       rateA[c(j, k)] = r_0*exp(-1*newH)
       
@@ -222,13 +230,13 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0){
       # activity rates - only of a single position
       # spike in ligand at single time point during simulation
       # if (cnt*dt == cT) {
-      #   newH = calcDeltaH(r_0, DeltaA, A, M, adjL, k0, k1, c=c, Kon_, J,
+      #   newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c=c, Kon_, J,
       #                     idx = j)
       # } else {
-      #   newH = calcDeltaH(r_0, DeltaA, A, M, adjL, k0, k1, c=0, Kon_, J,
+      #   newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c=0, Kon_, J,
       #                     idx = j, ln=ln)
       # }
-      newH = calcDeltaH(r_0, DeltaA, A, M, adjL, k0, k1, c, Kon_, J,
+      newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c, Kon_, J,
                         idx = j, ln=ln)
       rateA[j] = r_0*exp(-1*newH)
       
@@ -260,12 +268,27 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0){
   return(SIMresults)
 }
 
-SIMresults = SIMULATION(adjL, k0, k1, c, Kon_, J, r_0)
+
+foreach(r=1:rep) %dopar% {
+  
+  tm = proc.time()
+  SIMresults = SIMULATION(adjL, k0, k1, c, Kon_, J, r_0, r)
+  elap = proc.time() - tm
+  
+  ### OUTPUT ###
+  save(SIMresults, file = paste0(outfol,
+                                 '_c', c,
+                                 '_met-', met,
+                                 '_rep', r,
+                                 '.RData'))
+  write(elap[3], file = paste0(outfol, 'time'), append = T)
+}
+
+
+stopImplicitCluster()
+
 
 ### OUTPUT ###
-setwd(outfol)
-save(SIMresults, file = paste0('_c', c,
-                               '_met-', met,
-                               '_rep', rep,
-                               '.RData'))
-setwd('~/Documents/SYNMICRO/')
+write(paste0('simulation finished sucessfully at ', Sys.time()),
+      file = paste0('logs/simulation_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+

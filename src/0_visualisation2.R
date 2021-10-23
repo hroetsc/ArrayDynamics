@@ -14,6 +14,11 @@ if(!dir.exists(paste0(outfol, 'fluct/'))) {
   dir.create(paste0(outfol, 'fluct/'))
 }
 
+print('-------------------------------------')
+print('VISUALISATION OF OVERALL FLUCTUATIONS')
+print('-------------------------------------')
+
+
 ### INPUT ###
 fs = list.files(path = outfol,
                 pattern = paste0('_c', c, '_met-', met, '_rep'),
@@ -53,7 +58,7 @@ cols = heat.colors(length(fs), alpha = .5)
 #----- plot activity -----
 setwd(paste0(outfol, 'fluct/'))
 
-png(paste0('fluctuations_c', c, '_met-', met, '.png'),
+png(paste0('fluctuations_',lattice,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'_met-',met,'.png'),
     width = 9, height = 9, units = 'in',
     res = 300)
 
@@ -105,6 +110,10 @@ save(ovA, file = paste0('A_c', c, '_met-', met, '.RData'))
 save(ovM, file = paste0('M_c', c, '_met-', met, '.RData'))
 
 setwd('~/Documents/SYNMICRO/')
+
+write(paste0('plotting activity flustuations finished sucessfully at ', Sys.time()),
+      file = paste0('logs/plotfluctuations_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+
 
 # spectrum(x)
 # 
