@@ -33,7 +33,7 @@ option_list = list(
               help = 'simulation replicate ID'),
   make_option(c('-x', '--X'), type = 'integer', default = X,
               help = 'lattice size (1D)'),
-  make_option(c('-n', '--cores'), type = 'integer', default = 1,
+  make_option(c('-n', '--cores'), type = 'integer', default = 10,
               help = 'number of cores for parallel execution of simulation')
 )
 

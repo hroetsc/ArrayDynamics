@@ -26,7 +26,10 @@ theme_set(theme_classic())
 
 ### INPUT ###
 fs = Sys.glob('results/SIMresults/*/dose-response/A_perturb_met-*.RData')
-fs = fs[str_detect(fs, paste0('met-',met))]
+
+print(fs)
+
+fs = fs[str_detect(fs, coll(met))]
 fs = fs[str_detect(fs, lattice)]
 
 
@@ -57,6 +60,11 @@ extractPARAMS = function(f) {
     tbl$d = perturb$dr$coefficients[3] %>% as.numeric()
     tbl$e = perturb$dr$coefficients[4] %>% as.numeric()
     
+    # tbl$b = NA
+    # tbl$c = NA
+    # tbl$d = NA
+    # tbl$e = NA
+    
     tbl$N = perturb$MWC$N
     
     return(tbl)  
@@ -83,10 +91,13 @@ no_Js = if(no_Js<4) { 5.5 }
 
 PAR$group = as.factor(PAR$r0*PAR$J)
 
-p = ggplot(PAR, aes(col=group, group=group)) +
+p = ggplot(PAR, aes(x=cs, y=a.m, col=group, group=group)) +
   geom_point(aes(x=cs, y=a.m))+
   geom_errorbar(aes(x=cs, ymin=a.m-a.sd, ymax=a.m+a.sd))+
-  geom_path(aes(x=cs, y=a.m)) +
+  # geom_path(aes(x=cs, y=a.m)) +
+  geom_smooth(aes(group=group)) +
+  scale_x_continuous(trans='log10') +
+  # scale_y_continuous(trans='log10') +
   scale_color_viridis_d() +
   ylab(TeX('<A> $\\pm$ SD')) +
   xlab(TeX('$\\frac{\\[MeAsp\\]}{K_{off}}$')) +
@@ -157,6 +168,7 @@ t = paste0('lattice: ', lattice, ', methylation: ', met)
 hm = grid.arrange(plotMATRIX(cnt = m[,,1], param = dimnames(m)[[3]][1]),
                   plotMATRIX(cnt = m[,,5], param = dimnames(m)[[3]][5]),
                   nrow=1, top=t)
+# hm = plotMATRIX(cnt = m[,,5], param = dimnames(m)[[3]][5])
 ggsave(filename = paste0('results/dose-response_simulations_', lattice, '_met-', met, '_params.pdf'),
        plot = hm, device = cairo_pdf(), height = 4, width = 12,
        dpi = 'retina')
@@ -164,6 +176,6 @@ ggsave(filename = paste0('results/dose-response_simulations_', lattice, '_met-',
 
 
 ### OUTPUT ###
-write(paste0('aggregation of dose-response curves finished sucessfully at ', Sys.time()),
-      file = unlist(snakemake@output[['agg_dr']]))
-
+# write(paste0('aggregation of dose-response curves finished sucessfully at ', Sys.time()),
+#       file = unlist(snakemake@output[['agg_dr']]))
+ 

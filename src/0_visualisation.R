@@ -22,11 +22,14 @@ print('--------------------------------')
 
 
 ### INPUT ###
-load(paste0(outfol,
-            '_c', c,
-            '_met-', met,
-            '_rep', rep,
-            '.RData'))
+fs = list.files(path = outfol, full.names = T,
+                pattern = paste0('_rep', rep, '.RData'))
+fs = fs[str_detect(fs, coll(met))]
+fs = fs[str_detect(fs, paste0('c', c, '_'))]
+
+print(fs)
+
+load(fs)
 
 setwd(paste0(outfol, 'GIFs/'))
 

@@ -33,6 +33,11 @@ fs = list.files(path = '../fluct', pattern = 'A_c*',
 fs.M = list.files(path = '../fluct', pattern = 'M_c*',
                 recursive = F, full.names = T)
 
+fs = fs[str_detect(fs, coll(met))]
+fs.M = fs.M[str_detect(fs.M, coll(met))]
+
+print(fs)
+
 ### MAIN PART ###
 # remove zero-concentration
 # select correct methylation
@@ -87,38 +92,44 @@ m.sd[is.na(m.sd)] = 0
 
 # ----- fit logarithmic model -----
 nrep = length(CONS[['activity']][[1]])
-dr = drm(a~rep(cs, each=nrep), fct = LL.4())
 
-fkt = function(coeff, cs) {
-  b = coeff[1] %>% as.numeric()
-  c = coeff[2] %>% as.numeric()
-  d = coeff[3] %>% as.numeric()
-  e = coeff[4] %>% as.numeric()
+dr = try(drm(a~rep(cs, each=nrep), fct = LL.4()))
+
+if(! mode(dr) == 'character') {
   
-  x = seq(min(cs), max(cs), .05)
-  y = c + ((d-c)/(1 + exp(b*(log(x) - log(e)))))
+  fkt = function(coeff, cs) {
+    b = coeff[1] %>% as.numeric()
+    c = coeff[2] %>% as.numeric()
+    d = coeff[3] %>% as.numeric()
+    e = coeff[4] %>% as.numeric()
+    
+    x = seq(min(cs), max(cs), .05)
+    y = c + ((d-c)/(1 + exp(b*(log(x) - log(e)))))
+    
+    return(list(x=x, y=y))
+  }
   
-  return(list(x=x, y=y))
+  coeff = dr$coefficients %>% format(scientific=T) 
+  fkt.cv = fkt(coeff, cs)
+  
+  # plotting 
+  png(paste0('A_dr_met-', met, '.png'),
+      width = 9, height = 5, units = 'in',
+      res = 300)
+  
+  plot(cs, a.m,
+       ylim = c(0,.6),
+       pch = 16,
+       ylab = TeX('<A> $\\pm$ SD'), xlab = TeX('$\\frac{\\[MeAsp\\]}{K_{off}}$'),
+       main = TeX('$f(x) = c + \\frac{d-c}{1 + exp(b \\cdot (log(x) - log(e))}$'),
+       sub = paste0('b=', coeff[1], ', c=', coeff[2], ', d=', coeff[3], ', e=', coeff[4]))
+  arrows(cs, a.m-a.sd, cs, a.m+a.sd, length=0.05, angle=90, code=3)
+  lines(y~x, data = fkt.cv)
+  
+  dev.off()
+  
+  
 }
-
-coeff = dr$coefficients %>% format(scientific=T) 
-fkt.cv = fkt(coeff, cs)
-
-# plotting 
-png(paste0('A_dr_met-', met, '.png'),
-    width = 9, height = 5, units = 'in',
-    res = 300)
-
-plot(cs, a.m,
-     ylim = c(0,.6),
-     pch = 16,
-     ylab = TeX('<A> $\\pm$ SD'), xlab = TeX('$\\frac{\\[MeAsp\\]}{K_{off}}$'),
-     main = TeX('$f(x) = c + \\frac{d-c}{1 + exp(b \\cdot (log(x) - log(e))}$'),
-     sub = paste0('b=', coeff[1], ', c=', coeff[2], ', d=', coeff[3], ', e=', coeff[4]))
-arrows(cs, a.m-a.sd, cs, a.m+a.sd, length=0.05, angle=90, code=3)
-lines(y~x, data = fkt.cv)
-
-dev.off()
 
 # ----- fit MWC model -----
 

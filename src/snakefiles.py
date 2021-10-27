@@ -56,11 +56,11 @@ rule simulation:
   run:
     m = pd.read_csv('MASTER.csv', sep=',')
     
-    for i,j in m.iterrows():
+    for i in range(m.shape[0]):
       lattice, met, J, r_0, c = m['lattice'].iloc[i], m['met'].iloc[i], m['J'].iloc[i], m['r_0'].iloc[i], m['c'].iloc[i]
       shell("Rscript src/0_DynamicMC.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c} --rep {params.rep} --cores {params.cores}")
       
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': r_0, 'c': int(c) if c % 1 == 0 else c}
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
       logfile = "logs/simulation_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt".format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
@@ -94,12 +94,12 @@ rule plotgrids:
     m = pd.read_csv('MASTER.csv', sep=',')
     m_red = m[m['c'] == 0]
 
-    for i,j in m_red.iterrows():
+    for i in range(m_red.shape[0]):
       lattice, met, J, r_0, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
                                 m_red['r_0'].iloc[i], m_red['c'].iloc[i]
       shell("Rscript src/0_visualisation.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': r_0, 'c': int(c) if c % 1 == 0 else c}
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
       logfile = 'logs/plotgrids_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
@@ -129,11 +129,11 @@ rule plotfluctuations:
   run:
     m = pd.read_csv('MASTER.csv', sep=',')
 
-    for i,j in m.iterrows():
+    for i in range(m.shape[0]):
       lattice, met, J, r_0, c = m['lattice'].iloc[i], m['met'].iloc[i], m['J'].iloc[i], m['r_0'].iloc[i], m['c'].iloc[i]
       shell("Rscript src/0_visualisation2.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': r_0, 'c': int(c) if c % 1 == 0 else c}
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
       logfile = 'logs/plotfluctuations_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
@@ -165,13 +165,14 @@ rule calculatepsd:
   run:
     m = pd.read_csv('MASTER.csv', sep=',')
     m_red = m[m['c'] == 0]
+    print(m_red)
 
-    for i,j in m_red.iterrows():
+    for i in range(m_red.shape[0]):
       lattice, met, J, r_0, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
                                 m_red['r_0'].iloc[i], m_red['c'].iloc[i]
       shell("Rscript src/1_PSD.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': r_0, 'c': int(c) if c % 1 == 0 else c}
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
       logfile = 'logs/calculatepsd_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
@@ -208,8 +209,10 @@ rule aggregatepsd:
     join(benchmarks, 'aggregatepsd.json')
   log:
     join(logs, 'aggregatepsd.txt')
-  script:
-    '2_aggregate-psd.R'
+  shell:
+    'Rscript src/2_aggregate-psd.R --met RB+; \
+    Rscript src/2_aggregate-psd.R --met RB-;\
+    echo "aggregation of PSDs finished sucessfully!" > results/SIMresults/aggregatepsd.txt'
 
 checkpoint check_aggregatepsd:
   input:
@@ -236,15 +239,15 @@ rule calculatedoseresponse:
     # concentration is set to 0 to avoid redundancy
     # R script lists files with all concentrations
 
-    m_red = m[(m['met'] == 'RB-') & (m['c'] == 0)]
+    m_red = m[(m['met'] == str('RB-')) & (m['c'] == 0)]
     print(m_red)
 
-    for i,j in m_red.iterrows():
+    for i in range(m_red.shape[0]):
       lattice, met, J, r_0, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
                                 m_red['r_0'].iloc[i], m_red['c'].iloc[i]
       shell("Rscript src/1_dose-response.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': r_0, 'c': int(c) if c % 1 == 0 else c}
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
       logfile = 'logs/calculatedoseresponse_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
@@ -269,8 +272,9 @@ rule aggregatedoseresponse:
     join(benchmarks, 'aggregatedoseresponse.json')
   log:
     join(logs, 'aggregatedoseresponse.txt')
-  script:
-    '2_aggregate-dr.R'
+  shell:
+    'Rscript src/2_aggregate-dr.R --met RB-;\
+    echo "aggregation of dose-response curves finished sucessfully!" > results/SIMresults/aggregatedoseresponse.txt'
 
 checkpoint check_aggregatedoseresponse:
   input:

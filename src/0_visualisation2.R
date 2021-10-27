@@ -21,9 +21,11 @@ print('-------------------------------------')
 
 ### INPUT ###
 fs = list.files(path = outfol,
-                pattern = paste0('_c', c, '_met-', met, '_rep'),
+                pattern = paste0('_c', c, '_met-'),
                 recursive = F, full.names = T)
+fs = fs[str_detect(fs, coll(met))]
 
+print(fs)
 
 ### MAIN PART ###
 # ----- extract mean activity and methylation -----

@@ -9,6 +9,9 @@ library(dplyr)
 library(reshape2)
 library(foreach)
 library(doParallel)
+# library(JuliaCall)
+# 
+# julia <- julia_setup()
 
 source('src/argparse.R')
 source(paste0('src/', lattice, '.R'))
@@ -86,19 +89,21 @@ calcDeltaA = function(A) {
 
 calcJ = function(i, A, adjL, J) {
   
-  if (length(adjL) == n) {
+  if (lattice == 'Kagome') {
     
-    k = adjL[[which(names(adjL) == i)]]
+    k = c(adjL[i,]) %>% na.omit()
     j = 2*J*(2*A[k]-1)
+    
     return(sum(j))
     
   } else {
     
-    j = 0
-    for (a in 1:length(adjL)) {
-      k = adjL[[a]][[which(names(adjL[[a]]) == i)]] %>% na.omit()
-      j = j + sum(2*J[a]*(2*A[k]-1))
-    }
+    k = adjL[i,]
+    
+    j = sum(2*J[1]*(2*A[k[1:2] %>% na.omit()]-1)) +
+      sum(2*J[2]*(2*A[k[3:4] %>% na.omit()]-1)) +
+      sum(2*J[3]*(2*A[k[5:6] %>% na.omit()]-1))
+    
     return(j)
     
   }
@@ -110,9 +115,9 @@ calcDeltaH = function(DeltaA, A, M, adjL, k0, k1, c, Kon_, J, idx = c(1:n), ln=N
   
   # free energy - calculate only once in case the concentration is non-zero
   if (is.na(ln)) {
-    G = k0 - k1*M[idx] + log((1 + c) / (1 + c/Kon_))
+    f = k0 - k1*M[idx] + log((1 + c) / (1 + c/Kon_))
   } else {
-    G = k0 - k1*M[idx] + ln
+    f = k0 - k1*M[idx] + ln
   }
   
   # coupling energy
@@ -121,7 +126,7 @@ calcDeltaH = function(DeltaA, A, M, adjL, k0, k1, c, Kon_, J, idx = c(1:n), ln=N
   for (i in 1:length(idx)) { H_int[i] = calcJ(idx[i], A, adjL, J) }
   
   # total energy term
-  DeltaH = DeltaA[idx]*(G - H_int)
+  DeltaH = DeltaA[idx]*(f - H_int)
   
   return(DeltaH)
 }
@@ -150,8 +155,8 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
   # ----- calculate initial rates -----
   # activity rates
   ln = log((1 + c) / (1 + c/Kon_))
-  DeltaH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c=0, Kon_, J, ln=ln)
-  rateA = r_0*exp(-1*DeltaH)
+  DeltaH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c, Kon_, J, ln=ln)
+  rateA = r_0*exp(-0.5*DeltaH)
   
   # methylation rates only where methylation/demethylation can happen
   rateM = kR*(1-A)*(M<Mtot) - kB*A*(M>0)
@@ -190,18 +195,8 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
       # --- calculate new rates ---
       # activity rates
       # update the rates of the neighbors
-      if (length(adjL) == n) {
-        k = adjL[[which(names(adjL) == j)]]
-        
-        } else {
-          
-        k = matrix(NA, 3, 2)
-        for (a in 1:length(adjL)) {
-          k[a, ] = adjL[[a]][[which(names(adjL[[a]]) == j)]]
-        }
-        k = as.vector(k) %>% na.omit()
-        
-        }
+      k = adjL[j,] %>%
+        na.omit()
       
       # spike in ligand at single time point during simulation
       # if (cnt*dt == cT) {
@@ -213,7 +208,7 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
       # }
       newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c, Kon_, J,
                         idx = c(j, k), ln=ln)
-      rateA[c(j, k)] = r_0*exp(-1*newH)
+      rateA[c(j, k)] = r_0*exp(-0.5*newH)
       
     } else {
       
@@ -238,7 +233,7 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
       # }
       newH = calcDeltaH(DeltaA, A, M, adjL, k0, k1, c, Kon_, J,
                         idx = j, ln=ln)
-      rateA[j] = r_0*exp(-1*newH)
+      rateA[j] = r_0*exp(-0.5*newH)
       
     }
     
@@ -281,7 +276,10 @@ foreach(r=1:rep) %dopar% {
                                  '_met-', met,
                                  '_rep', r,
                                  '.RData'))
-  write(elap[3], file = paste0(outfol, 'time'), append = T)
+  
+  write(paste0("R: ",
+               elap[3], " - c ", c, ", met ", met, ", rep ", rx),
+        file = paste0(outfol, 'time'), append = T)
 }
 
 

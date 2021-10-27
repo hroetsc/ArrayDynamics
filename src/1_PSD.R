@@ -25,7 +25,12 @@ getwd()
 
 # pick simulations where avg. A is 0.5
 # M0=12 RB- <==> c=0
-load(paste0('../fluct/A_c0_met-', met, '.RData'))
+fs = list.files(path = '../fluct', pattern = 'A_c0_',
+                recursive = F, full.names = T)
+fs = fs[str_detect(fs, coll(met))]
+print(fs)
+
+load(fs)
 
 
 ### MAIN PART ###

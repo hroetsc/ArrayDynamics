@@ -27,11 +27,11 @@ theme_set(theme_classic())
 
 
 ### INPUT ###
-# load('results/PSD_experiments.RData')
-load(snakemake@input[['PSDexp']])
+load('results/PSD_experiments.RData')
+# load(snakemake@input[['PSDexp']])
 
 fs = Sys.glob('results/SIMresults/*/PSD/A_c0_met-*.RData')
-fs = fs[str_detect(fs, paste0('met-',met))]
+fs = fs[str_detect(fs, coll(met))]
 fs = fs[str_detect(fs, lattice)]
 
 
@@ -101,7 +101,7 @@ p = ggplot(PSD, aes(x=freq, y=psd, col=group)) +
   scale_color_viridis_d() +
   ylab(TeX("$log_{10}(A_{R}(\\omega))(s)$")) +
   xlab(TeX("$log_{10}(\\frac{\\omega}{2 \\cdot \\pi})(Hz)$")) +
-  xlim(c(-3.5, -1.5)) +
+  xlim(c(-3.5, -0.5)) +
   theme(aspect.ratio = 1, legend.position = 'none')
 
 gr = p + 
@@ -188,6 +188,6 @@ ggsave(filename = paste0('results/PSD_simulations_', lattice, '_met-', met, '_pa
 
 
 ### OUTPUT ###
-write(paste0('aggregation of PSDs finished sucessfully at ', Sys.time()),
-      file = unlist(snakemake@output[['agg_psd']]))
+# write(paste0('aggregation of PSDs finished sucessfully at ', Sys.time()),
+#       file = unlist(snakemake@output[['agg_psd']]))
 

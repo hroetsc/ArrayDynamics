@@ -106,11 +106,11 @@ getNeighbors.Kagome = function(L, X) {
           
         }
         
-        cntN = na.omit(cntN)
+        cntN[which(cntN == 0)] = NA
         
-        if (any(cntN == 0)) {
-          cntN = cntN[-which(cntN == 0)]
-        }
+        # if (any(cntN == 0)) {
+        #   cntN = cntN[-which(cntN == 0)]
+        # }
         
         adjL[[i]] = cntN
         names(adjL)[i] = cntE
@@ -132,10 +132,13 @@ getNeighbors.Kagome = function(L, X) {
   return(adjL)
 }
 
-adjL = getNeighbors.Kagome(L, X)
+adj = getNeighbors.Kagome(L, X)
 
+tmp = plyr::ldply(adj)
+rownames(tmp) = tmp$.id
+tmp$.id = NULL
 
-
-
-
+tmp = as.matrix(tmp)
+adjL = apply(tmp, 2, as.integer) %>%
+  as.matrix()
 

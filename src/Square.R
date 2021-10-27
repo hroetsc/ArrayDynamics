@@ -42,9 +42,7 @@ paste0('construct Square lattice with ', n, ' elements') %>%
 
 getNeighbors.Square = function(L, X) {
   
-  adjL = list(type1 = list(),
-              type2 = list(),
-              type3 = list())
+  adjL = list()
   i = 1
   
   # add a frame of 0s to L
@@ -70,29 +68,19 @@ getNeighbors.Square = function(L, X) {
         # type 1
         cntN.1[1] = L[x1.r-1, x1.c]
         cntN.1[2] = L[x1.r+1, x1.c]
-        if (any(cntN.1 == 0)) {
-          cntN.1[which(cntN.1 == 0)] = NA
-        }
-        adjL[['type1']][[i]] = cntN.1
-        names(adjL[['type1']])[i] = cntE
         
         # type 2
         cntN.2[1] = L[x1.r, x1.c-1]
         cntN.2[2] = L[x1.r, x1.c+1]
-        if (any(cntN.2 == 0)) {
-          cntN.2[which(cntN.2 == 0)] = NA
-        }
-        adjL[['type2']][[i]] = cntN.2
-        names(adjL[['type2']])[i] = cntE
         
         # type 3
         cntN.3[1] = L[x1.r-1, x1.c-1]
         cntN.3[2] = L[x1.r+1, x1.c+1]
-        if (any(cntN.3 == 0)) {
-          cntN.3[which(cntN.3 == 0)] = NA
-        }
-        adjL[['type3']][[i]] = cntN.3
-        names(adjL[['type3']])[i] = cntE
+        
+        cntN = c(cntN.1, cntN.2, cntN.3)
+        cntN[which(cntN == 0)] = NA
+        adjL[[i]] = cntN
+        names(adjL)[i] = cntE
         
         i = i + 1 
       }
@@ -105,5 +93,13 @@ getNeighbors.Square = function(L, X) {
   return(adjL)
 }
 
-adjL = getNeighbors.Square(L, X)
+adj = getNeighbors.Square(L, X)
+
+tmp = plyr::ldply(adj)
+rownames(tmp) = tmp$.id
+tmp$.id = NULL
+
+tmp = as.matrix(tmp)
+adjL = apply(tmp, 2, as.integer) %>%
+  as.matrix()
 

@@ -39,11 +39,11 @@ parseData = function(f) {
   # tbl$PSD = tbl$PSD - mu+epsilon
   
   # convert to log scale
-  tbl$frequency = log10(tbl$frequency / (2*pi))
+  tbl$frequency = log10(tbl$frequency)
   tbl$PSD = log10(tbl$PSD)
   
   # cut off for very low and very high frequencies
-  m = which((tbl$frequency > -3.5) & (tbl$frequency < -1.5))
+  m = which((tbl$frequency > -3) & (tbl$frequency < -0.5))
   tbl = tbl[m,]
   
   return(tbl)
