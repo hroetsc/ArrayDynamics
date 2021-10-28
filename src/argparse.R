@@ -34,7 +34,9 @@ option_list = list(
   make_option(c('-x', '--X'), type = 'integer', default = X,
               help = 'lattice size (1D)'),
   make_option(c('-n', '--cores'), type = 'integer', default = 10,
-              help = 'number of cores for parallel execution of simulation')
+              help = 'number of cores for parallel execution of simulation'),
+  make_option(c('-t', '--time'), type = 'integer', default = TIME,
+              help = 'simulation time (s)')
 )
 
 opt_parser = OptionParser(option_list=option_list)
@@ -52,6 +54,7 @@ lattice = opt$lattice
 rep = opt$rep
 X = opt$X
 cores = opt$cores
+TIME = opt$time
 
 # format coupling energies
 if (str_detect(J, '-')) {
@@ -64,7 +67,7 @@ opt$J = J
 
 # shorter simulations for dose-response
 if (c != 0) {
-  TIME = 1.5e03
+  TIME = integer(TIME - ceiling(0.25*TIME))
 }
 
 # with/without methylation
@@ -72,7 +75,7 @@ if (met == 'RB-') {
   kR = 0
   kB = 0
   Mtot = 12
-  
+
   opt$Mtot = Mtot
   opt$kR = kR
   opt$kB = kB
@@ -106,4 +109,3 @@ print('-------------------------------------------------')
 print(unlist(opt))
 print('-------------------------------------------------')
 print('-------------------------------------------------')
-

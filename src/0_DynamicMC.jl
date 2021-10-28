@@ -4,12 +4,12 @@
 # description:  fast Julia functions for Gillespie simulation
 # author:       HR
 
-using Random
 using Distributed
-using ProgressMeter
-using RCall
-using HDF5
-import Distributions: Uniform
+@everywhere using Random
+@everywhere using Distributed
+@everywhere using ProgressMeter
+@everywhere using RCall
+@everywhere using HDF5
 
 println("------------------------------------------------")
 println("DYNAMIC MONTE CARLO SIMULATION OF ARRAY DYNAMICS")
@@ -17,8 +17,8 @@ println("------------------------------------------------")
 
 
 # ----- import variables from R -----
-R"source('src/argparse.R')"
 
+R"source('src/argparse.R')"
 @rget J;
 @rget r_0;
 @rget c;
@@ -35,6 +35,7 @@ R"source('src/argparse.R')"
 @rget dt;
 @rget epsilon;
 @rget cores;
+@rget rep;
 @rget outfol
 
 R"source(paste0('src/', lattice, '.R'))"
@@ -153,11 +154,13 @@ end
             R = sum(r)
 
             # --- pick time step ---
-            u_1 = rand(Uniform(epsilon, 1-epsilon), 1)[1]
+            u_1 = rand(Float64, 1)[1]
+            # u_1 = rcopy("runif(1)")
             τ = (1/R)*log(1/u_1)
 
             # --- pick reaction ---
-            u_2 = rand(Uniform(epsilon, 1-epsilon), 1)[1]
+            u_2 = rand(Float64, 1)[1]
+            # u_2 = rcopy("runif(1)")
             j = findmax(cumsum(r) .> u_2*R)[2]  # speed up!
 
             # --- perform reaction and increment time ---
@@ -197,7 +200,7 @@ end
             rateM[j] = kR*(1-A[j])*(M[j] < Mtot) - kB*A[j]*(M[j] > 0)
 
             # --- record the state of the system every N steps
-            if t >= cnt*dt
+            if t >= cnt*dt-dt
 
                 ASimResults[cnt, :] = A
                 MSimResults[cnt, :] = M
@@ -221,26 +224,34 @@ end
 end
 
 # ----- execute in parallelised loop -----
-
-TIME = 100
-rep = 2
+#TIME = 100
+#rep = 2
+#cores = 2
 
 if cores != rep
     println("NUMBER OF THREADS MUST BE EQUAL TO NUMBER OF REPLICATES")
 end
 
+# addprocs(cores)
+# export JULIA_NUM_THREADS=cores
+
+@everywhere allresults = Dict()
 
 Threads.@threads for rx in 1:cores
 
     SIMresults = SIMULATION(adjL, k0, k1, c, Kon_, J, r_0, n, Mtot, met, rx)
-
-    outfile = string(outfol,"_c",c,"_met-",met,"_rep",rx,".h5")
-    h5open(outfile, "w") do file
-        write(file, "SIMresults", SIMresults)
-    end
+    allresults[rx] = SIMresults
 
 end
 
+# ----- save results ---
+@rput allresults
 
-# ----- put results back to R -----
-@rput ALLRESULTS
+#cr = c%1 == 0 ? Int(c) : c
+#outfile = string(outfol,"_c",cr,"_met-",met,"_rep",rx,".h5")
+
+#h5open(outfile, "w") do fid
+#    write(fid, "A", SIMresults["A"])
+#    write(fid, "M", SIMresults["M"])
+#    write(fid, "Ts", SIMresults["Ts"])
+#end

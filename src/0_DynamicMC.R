@@ -9,9 +9,6 @@ library(dplyr)
 library(reshape2)
 library(foreach)
 library(doParallel)
-# library(JuliaCall)
-# 
-# julia <- julia_setup()
 
 source('src/argparse.R')
 source(paste0('src/', lattice, '.R'))
@@ -174,11 +171,11 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
     R = sum(r)  # a_0 in paper
     
     # --- pick time step ---
-    u_1 = runif(1, min = epsilon, max = 1-epsilon)
+    u_1 = runif(1)
     tau = (1/R) * log(1/u_1)
     
     # --- pick reaction ---
-    u_2 = runif(1, min = epsilon, max = 1-epsilon)
+    u_2 = runif(1)
     # faster!
     j = which.max(cumsum(r) > u_2*R)
     
@@ -242,7 +239,7 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
     
     
     # --- record state of the system every N steps ---
-    if (t > cnt*dt) {
+    if (t > cnt*dt-dt) {
       
       A.SIMresults[[cnt]] = A
       names(A.SIMresults)[cnt] = t
@@ -263,12 +260,11 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
   return(SIMresults)
 }
 
+tm = proc.time()
 
 foreach(r=1:rep) %dopar% {
   
-  tm = proc.time()
   SIMresults = SIMULATION(adjL, k0, k1, c, Kon_, J, r_0, r)
-  elap = proc.time() - tm
   
   ### OUTPUT ###
   save(SIMresults, file = paste0(outfol,
@@ -276,17 +272,18 @@ foreach(r=1:rep) %dopar% {
                                  '_met-', met,
                                  '_rep', r,
                                  '.RData'))
-  
-  write(paste0("R: ",
-               elap[3], " - c ", c, ", met ", met, ", rep ", rx),
-        file = paste0(outfol, 'time'), append = T)
 }
 
+elap = proc.time() - tm
 
 stopImplicitCluster()
 
 
 ### OUTPUT ###
+write(paste0("R: ",
+             round(elap[3], 4), " - r0 ", r_0, ", J ", paste(J, collapse = '-') , ", c ", c, ", met ", met),
+      file = paste0(outfol, 'time'), append = T)
+
 write(paste0('simulation finished sucessfully at ', Sys.time()),
       file = paste0('logs/simulation_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
 
