@@ -8,5 +8,7 @@ After installing Conda, you need to install Snakemake. The Snakemake installatio
 
 R, Julia and Python need to be installed. Ideally, install them via Conda. too.
 
+Before any execution change the following environment variable: `export JULIA_NUM_THREADS=10`
+
 ## Simulation parameters
 Are specified in `features.yaml`. Based on the list, a master table (`MASTER.csv`) is created as first step of the pipeline. The master table contains all parameter combinations tested in the simulation.
