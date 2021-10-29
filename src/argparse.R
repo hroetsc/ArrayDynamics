@@ -1,7 +1,7 @@
 ### ARRAY DYNAMICS SIMULATION ###
-# input:         -
-# output:       constants
-# description:  list all constants used for simulation
+# input:        constants
+# output:       simulation parameters
+# description:  read and parse command-line arguments + constants
 # author:       HR
 
 library(dplyr)
@@ -67,14 +67,15 @@ opt$J = J
 
 # shorter simulations for dose-response
 if (c != 0) {
-  TIME = integer(TIME - ceiling(0.25*TIME))
+  TIME = as.integer(TIME - ceiling(0.25*TIME))
+  opt$time = TIME
 }
 
 # with/without methylation
 if (met == 'RB-') {
   kR = 0
   kB = 0
-  Mtot = 12
+  Mtot = as.integer(12)
 
   opt$Mtot = Mtot
   opt$kR = kR
@@ -87,7 +88,7 @@ Kon_ = Kon/Koff
 # modify lattice size in case of square lattice
 if (lattice != 'Kagome') {
   x = X^2-.25*X^2
-  X = sqrt(x) %>% ceiling() %>% format(digits = 0) %>% as.numeric()
+  X = sqrt(x) %>% ceiling() %>% format(digits = 0) %>% as.numeric() %>% as.integer()
   opt$X = X
 }
 
@@ -109,3 +110,10 @@ print('-------------------------------------------------')
 print(unlist(opt))
 print('-------------------------------------------------')
 print('-------------------------------------------------')
+
+# ----- temporary: compare R and Julia simulations -----
+
+# set.seed(42)
+# vu_1 = runif(n=1e07)
+# vu_2 = runif(n=1e07)
+

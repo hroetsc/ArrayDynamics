@@ -13,14 +13,14 @@ library(stringr)
 
 # ----- initialisation -----
 julia <- julia_setup()
-
+system("export JULIA_NUM_THREADS=10")
 
 # ----- execution -----
 tm = proc.time()
 julia_source("src/0_DynamicMC.jl")
 elap = proc.time() - tm
 
-
+# save(allresults, file = paste0(outfol,"_c",c,"_met-",met,"_allresults.RData"))
 # ----- load and parse results -----
 source('src/argparse.R')
 
@@ -29,8 +29,19 @@ print("LOAD SIMULATION RESULTS AND PARSE THEM INTO RDATA")
 for (i in 1:length(allresults)) {
   cnt = allresults[[i]]
   
-  SIMresults = list(A = split(cnt$A, rep(1:nrow(cnt$A), each=ncol(cnt$A))),
-                    M = split(cnt$M, rep(1:nrow(cnt$M), each=ncol(cnt$M))))
+  A = as.matrix(cnt$A)
+  M = as.matrix(cnt$M)
+  
+  # foolproof version
+  Alist = list()
+  Mlist = list()
+  for (j in 1:nrow(A)) {
+    Alist[[j]] = A[j,]
+    Mlist[[j]] = M[j,]
+  }
+  
+  SIMresults = list(A = Alist,
+                    M = Mlist)
   names(SIMresults[["A"]]) = cnt$Ts
   names(SIMresults[["M"]]) = cnt$Ts
   

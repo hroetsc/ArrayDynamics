@@ -33,10 +33,8 @@ R"source('src/argparse.R')"
 @rget lattice;
 @rget TIME;
 @rget dt;
-@rget epsilon;
 @rget cores;
-@rget rep;
-@rget outfol
+@rget rep
 
 R"source(paste0('src/', lattice, '.R'))"
 @rget n;
@@ -57,7 +55,7 @@ function initialiseM(n, Mtot, met)
     if met == "RB+"
         M = rand(0:Mtot,n)
     else
-        M = repeat(Mtot, n)
+        M = repeat(collect(Mtot), n)
     end
     return M
 
@@ -83,7 +81,6 @@ function calcJ(i, A, adjL, n, J)
         return sum(j)
 
     else
-
         k = adjL[i,:]
         j = sum(@. 2J[1]*(2A[collect(skipmissing(k[1:2]))]-1)) +
             sum(@. 2J[2]*(2A[collect(skipmissing(k[3:4]))]-1)) +
@@ -112,116 +109,111 @@ end
 
 # ----- simulation -----
 
-@everywhere begin
-    function SIMULATION(adjL, k0, k1, c, Kon_, J, r_0, n, Mtot, met, rx)
+function SIMULATION(adjL, k0, k1, c, Kon_, J, r_0, n, Mtot, met, rx)
 
-        Random.seed!(rx)
+    Random.seed!(rx)
 
-        # --- initialise ---
-        A = initialiseA(n)
-        M = initialiseM(n, Mtot, met)
-        ΔA = calcΔA(A)
+    # --- initialise ---
+    A = initialiseA(n)
+    M = initialiseM(n, Mtot, met)
+    ΔA = calcΔA(A)
 
-        # --- record states ---
-        ASimResults = zeros(Int64, (Int(TIME), n))
-        ASimResults[1, :] = A
+    # --- record states ---
+    ASimResults = zeros(Int64, (Int(TIME), n))
+    ASimResults[1, :] = A
 
-        MSimResults = zeros(Int64, (Int(TIME), n))
-        MSimResults[1, :] = M
+    MSimResults = zeros(Int64, (Int(TIME), n))
+    MSimResults[1, :] = M
+    Ts = zeros(Float64, Int(TIME))
 
-        Ts = zeros(Float64, Int(TIME))
+    # --- calculate initial rates ---
+    # activity rates
+    ln = log((1 + c) / (1 + c/Kon_))
+    ΔH = calcΔH(ΔA, A, M, c, k0, k1, Kon_, n, J, ln, nothing)
+    rateA = @. r_0*exp(-0.5ΔH)
 
-        # --- calculate initial rates ---
-        # activity rates
-        ln = log((1 + c) / (1 + c/Kon_))
-        ΔH = calcΔH(ΔA, A, M, c, k0, k1, Kon_, n, J, ln, nothing)
-        rateA = @. r_0*exp(-0.5ΔH)
+    # methylation rates only where methylation / demethylation can happen
+    rateM = @. kR*(1-A)*(M < Mtot) - kB*A*(M > 0)
+    # --- iteration ---
+    pb = Progress(Int(TIME))
+    t = 0
+    cnt = 2
 
-        # methylation rates only where methylation / demethylation can happen
-        rateM = @. kR*(1-A)*(M < Mtot) - kB*A*(M > 0)
+    while t < TIME
 
-        # --- iteration ---
-        pb = Progress(Int(TIME))
-        t = 0
-        cnt = 2
+        update!(pb, cnt)
 
-        while t < TIME
+        # --- sum of all rates ---
+        r = vcat(rateA, abs.(rateM))
+        R = sum(r)
 
-            update!(pb, cnt)
+        # --- pick time step ---
+        u_1 = rand(Float64, 1)[1]
+        τ = (1/R)*log(1/u_1)
 
-            # --- sum of all rates ---
-            r = vcat(rateA, abs.(rateM))
-            R = sum(r)
+        # --- pick reaction ---
+        u_2 = rand(Float64, 1)[1]
+        j = findmax(cumsum(r) .> u_2*R)[2]  # speed up!
 
-            # --- pick time step ---
-            u_1 = rand(Float64, 1)[1]
-            # u_1 = rcopy("runif(1)")
-            τ = (1/R)*log(1/u_1)
+        # --- perform reaction and increment time ---
+        # decide which reaction (activity or methylation change) happens
 
-            # --- pick reaction ---
-            u_2 = rand(Float64, 1)[1]
-            # u_2 = rcopy("runif(1)")
-            j = findmax(cumsum(r) .> u_2*R)[2]  # speed up!
+        if j <= length(rateA)
 
-            # --- perform reaction and increment time ---
-            # decide which reaction (activity or methylation change) happens
+            # change activity for selected site
+            A[j] += ΔA[j]
+            ΔA[j] = calcΔA(A[j])
 
-            if j <= length(rateA)
+            # --- calculate new rates ---
+            # update the rates of the neighbors, too
+            k = collect(skipmissing(adjL[j,:]))
+            idx = vcat(j,k)
 
-                # change activity for selected site
-                A[j] += ΔA[j]
-                ΔA[j] = calcΔA(A[j])
+            newΔH = calcΔH(ΔA, A, M, c, k0, k1, Kon_, n, J, ln, idx)
+            rateA[idx] = @. r_0*exp(-0.5newΔH)
 
-                # --- calculate new rates ---
-                # update the rates of the neighbors, too
-                k = collect(skipmissing(adjL[j,:]))
-                idx = vcat(j,k)
+        else
 
-                newΔH = calcΔH(ΔA, A, M, c, k0, k1, Kon_, n, J, ln, idx)
-                rateA[idx] = @. r_0*exp(-0.5newΔH)
-
-            else
-
-                j -= n
-                # decide whether to methylate or to demethylate
-                if rateM[j] < 0
-                    M[j] -= 1
-                elseif rateM[j] > 0
-                    M[j] += 1
-                end
-
-                # --- calculate new rates ---
-                newΔH = calcΔH(ΔA, A, M, c, k0, k1, Kon_, n, J, ln, j)
-                rateA[j] = @. r_0*exp(-0.5newΔH)
-
+            j -= n
+            # decide whether to methylate or to demethylate
+            if rateM[j] < 0
+                M[j] -= 1
+            elseif rateM[j] > 0
+                M[j] += 1
             end
 
-            # update metylation rates
-            rateM[j] = kR*(1-A[j])*(M[j] < Mtot) - kB*A[j]*(M[j] > 0)
-
-            # --- record the state of the system every N steps
-            if t >= cnt*dt-dt
-
-                ASimResults[cnt, :] = A
-                MSimResults[cnt, :] = M
-                Ts[cnt] = t
-
-                cnt += 1
-            end
-
-            # --- increment time ---
-            t += τ
+            # --- calculate new rates ---
+            newΔH = calcΔH(ΔA, A, M, c, k0, k1, Kon_, n, J, ln, j)
+            rateA[j] = @. r_0*exp(-0.5newΔH)
 
         end
 
-        SIMresults = Dict("A" => ASimResults,
-                            "M" => MSimResults,
-                            "Ts" => Ts)
+        # update metylation rates
+        rateM[j] = kR*(1-A[j])*(M[j] < Mtot) - kB*A[j]*(M[j] > 0)
 
-        return SIMresults
+        # --- record the state of the system every N steps
+        if t >= cnt*dt-dt
+
+            ASimResults[cnt, :] = A
+            MSimResults[cnt, :] = M
+            Ts[cnt] = t
+
+            cnt += 1
+        end
+
+        # --- increment time ---
+        t += τ
 
     end
+
+    SIMresults = Dict("A" => ASimResults,
+                        "M" => MSimResults,
+                        "Ts" => Ts)
+
+    return SIMresults
+
 end
+
 
 # ----- execute in parallelised loop -----
 #TIME = 100
@@ -235,9 +227,9 @@ end
 # addprocs(cores)
 # export JULIA_NUM_THREADS=cores
 
-@everywhere allresults = Dict()
+global allresults = Dict()
 
-Threads.@threads for rx in 1:cores
+Threads.@threads for rx in collect(1:cores)
 
     SIMresults = SIMULATION(adjL, k0, k1, c, Kon_, J, r_0, n, Mtot, met, rx)
     allresults[rx] = SIMresults
@@ -247,11 +239,11 @@ end
 # ----- save results ---
 @rput allresults
 
-#cr = c%1 == 0 ? Int(c) : c
-#outfile = string(outfol,"_c",cr,"_met-",met,"_rep",rx,".h5")
+# cr = c%1 == 0 ? Int(c) : c
+# outfile = string(outfol,"_c",cr,"_met-",met,".h5")
 
-#h5open(outfile, "w") do fid
-#    write(fid, "A", SIMresults["A"])
-#    write(fid, "M", SIMresults["M"])
-#    write(fid, "Ts", SIMresults["Ts"])
-#end
+# h5open(outfile, "w") do fid
+#     write(fid, "rep1", allresults[1])
+#     write(fid, "rep2", allresults[2])
+#     write(fid, "rep3", allresults[3])
+# end

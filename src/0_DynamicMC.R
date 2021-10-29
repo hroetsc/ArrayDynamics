@@ -163,6 +163,7 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
   t = 0
   cnt = 2
   
+  
   while (t < TIME) {
     setTxtProgressBar(pb, t)
     
@@ -252,6 +253,7 @@ SIMULATION = function(adjL, k0, k1, c, Kon_, J, r_0, rep){
     
     # --- increment time ---
     t = t + tau
+    
   }
   
   SIMresults = list(A = A.SIMresults,

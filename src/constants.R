@@ -1,5 +1,12 @@
+### ARRAY DYNAMICS SIMULATION ###
+# input:        -
+# output:       constants
+# description:  specify all constants + default parameters used for simulations
+# author:       HR
+
+
 # ----- parameters to infer -----
-# variable parameters
+# variable parameters- defaults
 r_0 = 1
 J = 0.42
 c = 0

@@ -1,7 +1,7 @@
 ### ARRAY DYNAMICS SIMULATION ###
 # input:        simulation results
-# output:       visualisation
-# description:  visualise simulated array dynamics
+# output:       GIFs visualising simulated array dynamics
+# description:  visualisation of grid activity and methylation states
 # author:       HR
 
 library(dplyr)

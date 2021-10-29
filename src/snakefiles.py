@@ -47,7 +47,7 @@ rule simulation:
   output:
     sim = 'results/SIMresults/simulation.txt'
   params:
-    cores=10,
+    cores=features['replicates'],  # number of cores and number of replicates have to be identical
     rep=features['replicates']
   benchmark:
     join(benchmarks, 'simulation.json')
@@ -58,14 +58,13 @@ rule simulation:
     
     for i in range(m.shape[0]):
       lattice, met, J, r_0, c = m['lattice'].iloc[i], m['met'].iloc[i], m['J'].iloc[i], m['r_0'].iloc[i], m['c'].iloc[i]
-      shell("Rscript src/0_DynamicMC.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c} --rep {params.rep} --cores {params.cores}")
+      shell("Rscript src/0_DynamicMC_minimal.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c} --rep {params.rep} --cores {params.cores}")
       
       param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
       logfile = "logs/simulation_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt".format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
         time.sleep(5)
-      #shell('until [ -f {logfile} ]; do; sleep 10; done')
 
     shell('echo "simulation finished sucessfully!" > results/SIMresults/simulation.txt')
 
