@@ -23,7 +23,7 @@ print('--------------------------------')
 
 ### INPUT ###
 fs = list.files(path = outfol, full.names = T,
-                pattern = paste0('_rep', rep, '.RData'))
+                pattern = paste0('_rep1.RData'))
 fs = fs[str_detect(fs, coll(met))]
 fs = fs[str_detect(fs, paste0('c', c, '_'))]
 
@@ -40,7 +40,7 @@ Lm$value = as.character(Lm$value)
 
 transformVector = function(V, Lm) {
   
-  Vd = data.frame(value = names(V),
+  Vd = data.frame(value = c(1:n) %>% as.character(),
                   x = V)
   
   mx = left_join(Lm, Vd)

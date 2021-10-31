@@ -94,8 +94,8 @@ PAR$group = as.factor(PAR$r0*PAR$J)
 p = ggplot(PAR, aes(x=cs, y=a.m, col=group, group=group)) +
   geom_point(aes(x=cs, y=a.m))+
   geom_errorbar(aes(x=cs, ymin=a.m-a.sd, ymax=a.m+a.sd))+
-  # geom_path(aes(x=cs, y=a.m)) +
-  geom_smooth(aes(group=group)) +
+  geom_path(aes(group=group)) +
+  # geom_smooth(aes(group=group)) +
   scale_x_continuous(trans='log10') +
   # scale_y_continuous(trans='log10') +
   scale_color_viridis_d() +

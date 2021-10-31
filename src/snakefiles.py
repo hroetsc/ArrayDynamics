@@ -91,7 +91,7 @@ rule plotgrids:
     join(logs, 'plotgrids.txt')
   run:
     m = pd.read_csv('MASTER.csv', sep=',')
-    m_red = m[m['c'] == 0]
+    m_red = m[(m['met'] == str('RB+')) & (m['c'] == 0)]
 
     for i in range(m_red.shape[0]):
       lattice, met, J, r_0, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
