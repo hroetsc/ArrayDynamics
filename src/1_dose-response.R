@@ -184,7 +184,7 @@ save(perturb, file = paste0('A_perturb_met-', met, '.RData'))
 setwd('~/Documents/SYNMICRO/')
 
 write(paste0('calculating dose-response curves finished sucessfully at ', Sys.time()),
-      file = paste0('logs/calculatedoseresponse_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+      file = paste0('logs/calculatedoseresponse_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'.txt'))
 
 
 

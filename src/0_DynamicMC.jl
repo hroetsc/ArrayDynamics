@@ -9,7 +9,6 @@ using Distributed
 @everywhere using Distributed
 @everywhere using ProgressMeter
 @everywhere using RCall
-@everywhere using HDF5
 
 println("------------------------------------------------")
 println("DYNAMIC MONTE CARLO SIMULATION OF ARRAY DYNAMICS")

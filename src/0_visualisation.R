@@ -132,4 +132,4 @@ setwd('~/Documents/SYNMICRO/')
 
 ### OUTPUT ###
 write(paste0('plotting grids finished sucessfully at ', Sys.time()),
-      file = paste0('logs/plotgrids_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+      file = paste0('logs/plotgrids_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'.txt'))

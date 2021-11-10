@@ -21,8 +21,10 @@ lattice = snakemake@params[['lattice']]
 met = snakemake@params[['met']]
 J = snakemake@params[['J']]
 r_0 = snakemake@params[['r_0']]
+X = snakemake@params[['X']]
 c = snakemake@params[['c']]
 rep = snakemake@params[['rep']]
+
 
 print('--------------------------------')
 print('PARAMETERS')
@@ -30,6 +32,7 @@ print(lattice)
 print(met)
 print(J)
 print(r_0)
+print(X)
 print(c)
 print(rep)
 print('--------------------------------')
@@ -47,7 +50,7 @@ if (lattice == 'Square') {
 }
 
 # create all combinations
-MASTER = crossing(lattice, met,J,r_0,c,rep) %>%
+MASTER = crossing(lattice, met,J,r_0,X,c,rep) %>%
   as.data.frame()
 
 k = which(MASTER$met == 'RB+' & MASTER$c > 0)
@@ -55,8 +58,6 @@ if (length(k) > 0) {
   MASTER = MASTER[-k,]
 }
 
-# MASTER$outfol = paste0('results/SIMresults/',MASTER$lattice,'_J',
-#                       paste(MASTER$J, sep = '-'),'_r',MASTER$r_0,'/')
 
 print('----------------------------------------------------------')
 print(paste0('CREATED MASTER TABLE FOR ', nrow(MASTER)*rep, ' SIMULATIONS'))
@@ -64,6 +65,5 @@ print('----------------------------------------------------------')
 
 
 ### OUTPUT ###
-# write.csv(MASTER, 'MASTER.csv', row.names = F)
 write.csv(MASTER, file = unlist(snakemake@output[['mastertbl']]), row.names = F)
 

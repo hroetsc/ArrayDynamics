@@ -130,7 +130,7 @@ setwd('~/Documents/SYNMICRO/')
 
 
 write(paste0('calculating PSDs finished sucessfully at ', Sys.time()),
-      file = paste0('logs/calculatepsd_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+      file = paste0('logs/calculatepsd_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'.txt'))
 
 
 

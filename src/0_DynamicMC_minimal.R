@@ -52,9 +52,9 @@ for (i in 1:length(allresults)) {
 
 # ----- output -----
 write(paste0("Julia: ",
-             round(elap[3], 4), " - r0 ", r_0, ", J ", paste(J, collapse = '-') , ", c ", c, ", met ", met),
+             round(elap[3], 4), " - r0 ", r_0, ", J ", paste(J, collapse = '-') ,", n ",n, ", c ", c, ", met ", met),
       file = paste0(outfol, 'time'), append = T)
 
 write(paste0('simulation finished sucessfully at ', Sys.time()),
-      file = paste0('logs/simulation_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+      file = paste0('logs/simulation_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'.txt'))
 

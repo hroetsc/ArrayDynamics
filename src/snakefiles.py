@@ -19,6 +19,7 @@ rule mastertable:
     met = features['met'],
     J = features['J'],
     r_0 = features['r_0'],
+    X = features["X"],
     c = features['c'],
     rep = features['replicates']
   output:
@@ -48,7 +49,8 @@ rule simulation:
     sim = 'results/SIMresults/simulation.txt'
   params:
     cores=features['replicates'],  # number of cores and number of replicates have to be identical
-    rep=features['replicates']
+    rep=features['replicates'],
+    time=3000
   benchmark:
     join(benchmarks, 'simulation.json')
   log:
@@ -57,11 +59,11 @@ rule simulation:
     m = pd.read_csv('MASTER.csv', sep=',')
     
     for i in range(m.shape[0]):
-      lattice, met, J, r_0, c = m['lattice'].iloc[i], m['met'].iloc[i], m['J'].iloc[i], m['r_0'].iloc[i], m['c'].iloc[i]
-      shell("Rscript src/0_DynamicMC_minimal.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c} --rep {params.rep} --cores {params.cores}")
+      lattice, met, J, r_0, X, c = m['lattice'].iloc[i], m['met'].iloc[i], m['J'].iloc[i], m['r_0'].iloc[i], m['X'].iloc[i], m['c'].iloc[i]
+      shell("Rscript src/0_DynamicMC_minimal.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --X {X} --c {c} --rep {params.rep} --cores {params.cores} --time {params.time}")
       
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
-      logfile = "logs/simulation_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt".format(**param)
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c, 'X':X}
+      logfile = "logs/simulation_{lattice}_met-{met}_J{J}_r{r_0}_X{X}_c{c}.txt".format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
         time.sleep(5)
@@ -94,12 +96,12 @@ rule plotgrids:
     m_red = m[(m['met'] == str('RB+')) & (m['c'] == 0)]
 
     for i in range(m_red.shape[0]):
-      lattice, met, J, r_0, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
-                                m_red['r_0'].iloc[i], m_red['c'].iloc[i]
-      shell("Rscript src/0_visualisation.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
+      lattice, met, J, r_0, X, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
+                                  m_red['r_0'].iloc[i], m_red['X'].iloc[i], m_red['c'].iloc[i]
+      shell("Rscript src/0_visualisation.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --X {X} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
-      logfile = 'logs/plotgrids_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c, 'X':X}
+      logfile = 'logs/plotgrids_{lattice}_met-{met}_J{J}_r{r_0}_X{X}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
         time.sleep(5)
@@ -129,11 +131,11 @@ rule plotfluctuations:
     m = pd.read_csv('MASTER.csv', sep=',')
 
     for i in range(m.shape[0]):
-      lattice, met, J, r_0, c = m['lattice'].iloc[i], m['met'].iloc[i], m['J'].iloc[i], m['r_0'].iloc[i], m['c'].iloc[i]
-      shell("Rscript src/0_visualisation2.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
+      lattice, met, J, r_0, X, c = m['lattice'].iloc[i], m['met'].iloc[i], m['J'].iloc[i], m['r_0'].iloc[i], m['X'].iloc[i], m['c'].iloc[i]
+      shell("Rscript src/0_visualisation2.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --X {X} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
-      logfile = 'logs/plotfluctuations_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c, 'X':X}
+      logfile = 'logs/plotfluctuations_{lattice}_met-{met}_J{J}_r{r_0}_X{X}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
         time.sleep(5)
@@ -167,12 +169,12 @@ rule calculatepsd:
     print(m_red)
 
     for i in range(m_red.shape[0]):
-      lattice, met, J, r_0, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
-                                m_red['r_0'].iloc[i], m_red['c'].iloc[i]
-      shell("Rscript src/1_PSD.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
+      lattice, met, J, r_0, X, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
+                                  m_red['r_0'].iloc[i], m_red['X'].iloc[i], m_red['c'].iloc[i]
+      shell("Rscript src/1_PSD.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --X {X} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
-      logfile = 'logs/calculatepsd_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c, 'X':X}
+      logfile = 'logs/calculatepsd_{lattice}_met-{met}_J{J}_r{r_0}_X{X}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
         time.sleep(5)
@@ -242,12 +244,12 @@ rule calculatedoseresponse:
     print(m_red)
 
     for i in range(m_red.shape[0]):
-      lattice, met, J, r_0, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
-                                m_red['r_0'].iloc[i], m_red['c'].iloc[i]
-      shell("Rscript src/1_dose-response.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --c {c}")
+      lattice, met, J, r_0, X, c = m_red['lattice'].iloc[i], m_red['met'].iloc[i], m_red['J'].iloc[i],\
+                                  m_red['r_0'].iloc[i], m_red['X'].iloc[i], m_red['c'].iloc[i]
+      shell("Rscript src/1_dose-response.R --lattice {lattice} --met {met} --J {J} --r0 {r_0} --X {X} --c {c}")
 
-      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c}
-      logfile = 'logs/calculatedoseresponse_{lattice}_met-{met}_J{J}_r{r_0}_c{c}.txt'.format(**param)
+      param = {'lattice': lattice, 'met': met, 'J': J, 'r_0': int(r_0) if r_0 % 1 == 0 else r_0, 'c': int(c) if c % 1 == 0 else c, 'X':X}
+      logfile = 'logs/calculatedoseresponse_{lattice}_met-{met}_J{J}_r{r_0}_X{X}_c{c}.txt'.format(**param)
       print('waiting for:', logfile)
       while not os.path.exists(logfile):
         time.sleep(5)

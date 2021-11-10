@@ -114,7 +114,7 @@ save(ovM, file = paste0('M_c', c, '_met-', met, '.RData'))
 setwd('~/Documents/SYNMICRO/')
 
 write(paste0('plotting activity flustuations finished sucessfully at ', Sys.time()),
-      file = paste0('logs/plotfluctuations_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'.txt'))
+      file = paste0('logs/plotfluctuations_',lattice,'_met-',met,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'.txt'))
 
 
 # spectrum(x)

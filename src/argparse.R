@@ -90,12 +90,17 @@ if (lattice != 'Kagome') {
   x = X^2-.25*X^2
   X = sqrt(x) %>% ceiling() %>% format(digits = 0) %>% as.numeric() %>% as.integer()
   opt$X = X
+  
+  n = X^2
+} else {
+  n = 0.75*X^2
 }
+
 
 # ----- create output folder -----
 
 outfol = paste0('results/SIMresults/',lattice,'_J',
-                paste(J, collapse = '-'),'_r',r_0,'/')
+                paste(J, collapse = '-'),'_r',r_0,'_n',n,'/')
 if (!dir.exists(outfol)) {
   dir.create(outfol, recursive = T)
 }
