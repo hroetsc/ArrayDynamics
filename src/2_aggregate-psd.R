@@ -33,7 +33,9 @@ load('results/PSD_experiments.RData')
 fs = Sys.glob('results/SIMresults/*/PSD/A_c0_met-*.RData')
 fs = fs[str_detect(fs, coll(met))]
 fs = fs[str_detect(fs, lattice)]
+fs = fs[str_detect(fs, "_n")]
 
+print(fs)
 
 ### MAIN PART ###
 # ----- extract simulation parameters, PSDs and PSD characteristics -----
@@ -46,8 +48,12 @@ extractPARAMS = function(f, ret_psd) {
     str_remove('J') %>%
     as.numeric()
   
-  r0 = str_extract(params, pattern = 'r[^$]+') %>%
+  r0 = str_extract(params, pattern = 'r[^_]+') %>%
     str_remove('r') %>%
+    as.numeric()
+  
+  n = str_extract(params, pattern = 'n[^$]+') %>%
+    str_remove('n') %>%
     as.numeric()
   
   psd_params = plyr::ldply(PSDchar$allParams)
@@ -63,6 +69,7 @@ extractPARAMS = function(f, ret_psd) {
     
     x$J = J
     x$r0 = r0
+    x$n = n
     x$Smax = psd_params[1]
     x$wmax = psd_params[2]
     x$w12 = psd_params[3]
@@ -71,7 +78,7 @@ extractPARAMS = function(f, ret_psd) {
     
   } else {
     
-    out = c(J=J, r0=r0, psd_params)
+    out = c(J=J, r0=r0, n=n, psd_params)
     return(out)
   }
 }
@@ -92,9 +99,10 @@ PSD = plyr::ldply(PSD)
 # ----- grid of PSDs -----
 no_rs = unique(PSD$r0) %>% length()
 no_Js = unique(PSD$J) %>% length()
-x = mean(no_Js, no_rs) - 1
+no_ns = unique(PSD$n) %>% length()
+x = mean(no_Js, no_ns) - 1
 
-PSD$group = as.factor(PSD$r0*PSD$J)
+PSD$group = as.factor(PSD$n*PSD$J)
 
 p = ggplot(PSD, aes(x=freq, y=psd, col=group)) +
   geom_smooth(aes(group=group)) +
@@ -105,15 +113,15 @@ p = ggplot(PSD, aes(x=freq, y=psd, col=group)) +
   theme(aspect.ratio = 1, legend.position = 'none')
 
 gr = p + 
-  geom_point(aes(x=wmax, y=Smax)) +
-  geom_vline(aes(xintercept=w12), linetype='dashed') +
-  facet_grid(J~r0)
+  #geom_point(aes(x=wmax, y=Smax)) +
+  #geom_vline(aes(xintercept=w12), linetype='dashed') +
+  facet_grid(J~n)
 cs = p + facet_grid(J~.)
-rws = p + facet_grid(.~r0)
+rws = p + facet_grid(.~n)
 
 
-pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_rs-1,1)),
-          ggarrange(gr, cs, ncol = 2, widths = c(no_rs-3,1)),
+pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_ns-1,1)),
+          ggarrange(gr, cs, ncol = 2, widths = c(no_ns-3,1)),
           align = 'hv',
           heights = c(1,no_Js-1),
           nrow = 2)
@@ -132,19 +140,19 @@ PAR$group = NULL
 
 # format results
 Js = sort(PAR$J) %>% unique()
-r0s = sort(PAR$r0) %>% unique()
+ns = sort(PAR$n) %>% unique()
 
-m = array(NA, dim = c(length(Js), length(r0s), ncol(PAR)-2),
-          dimnames = list(Js, r0s, names(PAR)[3:ncol(PAR)]))
+m = array(NA, dim = c(length(Js), length(ns), ncol(PAR)-3),
+          dimnames = list(Js, ns, names(PAR)[4:ncol(PAR)]))
 
-for (c in 1:(ncol(PAR)-2)) {
+for (c in 1:(ncol(PAR)-3)) {
 
   for (j.1 in Js) {
-    for (r.1 in r0s) {
+    for (n.1 in ns) {
       
-      k = which(PAR$J == j.1 & PAR$r0 == r.1)
+      k = which(PAR$J == j.1 & PAR$n == n.1)
       if (length(k) > 0) {
-        m[which(dimnames(m)[[1]] == j.1),which(dimnames(m)[[2]] == r.1),c] = PAR[k, c+2]
+        m[which(dimnames(m)[[1]] == j.1),which(dimnames(m)[[2]] == n.1),c] = PAR[k, c+3]
       }
       
     }
@@ -156,10 +164,10 @@ for (c in 1:(ncol(PAR)-2)) {
 
 plotMATRIX = function(cnt, param) {
   
-  tr = if (met == 'y') {
-    allParams$`RB+, QEQE`[names(allParams$`RB+, QEQE`) == param]
+  tr = if (met == 'RB+') {
+    experimental$allParams$`RB+, QEQE`[names(experimental$allParams$`RB+, QEQE`) == param]
     } else {
-    allParams$`RB-, QEQE, 30um MeAsp`[names(allParams$`RB-, QEQE, 30um MeAsp`) == param]
+      experimental$allParams$`RB-, QEEE, 0um MeAsp`[names(experimental$allParams$`RB-, QEEE, 0um MeAsp`) == param]
     }
   
   h = levelplot(cnt %>% t(),
@@ -170,7 +178,7 @@ plotMATRIX = function(cnt, param) {
                 },
                 main=param,
                 sub=paste0('experiments: ', tr %>% round(4) %>% as.character()),
-                xlab='r0',
+                xlab='n',
                 ylab='J')
   
   return(as.grob(h))

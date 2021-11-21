@@ -27,10 +27,11 @@ theme_set(theme_classic())
 ### INPUT ###
 fs = Sys.glob('results/SIMresults/*/dose-response/A_perturb_met-*.RData')
 
-print(fs)
-
 fs = fs[str_detect(fs, coll(met))]
 fs = fs[str_detect(fs, lattice)]
+fs = fs[str_detect(fs, "_n")]
+
+print(fs)
 
 
 ### MAIN PART ###
@@ -46,14 +47,19 @@ extractPARAMS = function(f) {
     str_remove('J') %>%
     as.numeric()
   
-  r0 = str_extract(params, pattern = 'r[^$]+') %>%
+  r0 = str_extract(params, pattern = 'r[^_]+') %>%
     str_remove('r') %>%
+    as.numeric()
+  
+  n = str_extract(params, pattern = 'n[^$]+') %>%
+    str_remove('n') %>%
     as.numeric()
   
   if (is.data.frame(perturb$data)) {
     tbl = perturb$data
     tbl$J = J
     tbl$r0 = r0
+    tbl$n = n
     
     tbl$b = perturb$dr$coefficients[1] %>% as.numeric()
     tbl$c = perturb$dr$coefficients[2] %>% as.numeric()
@@ -86,10 +92,15 @@ PAR = plyr::ldply(PAR)
 # ----- grid of dose-response curves -----
 no_rs = unique(PAR$r0) %>% length()
 no_rs = if(no_rs<4) { 5.5 }
+
 no_Js = unique(PAR$J) %>% length()
 no_Js = if(no_Js<4) { 5.5 }
 
-PAR$group = as.factor(PAR$r0*PAR$J)
+no_ns = unique(PAR$n) %>% length()
+no_ns = if(no_ns<4) { 5.5 }
+
+# PAR$group = as.factor(PAR$r0*PAR$J)
+PAR$group = as.factor(PAR$n*PAR$J)
 
 p = ggplot(PAR, aes(x=cs, y=a.m, col=group, group=group)) +
   geom_point(aes(x=cs, y=a.m))+
@@ -103,14 +114,23 @@ p = ggplot(PAR, aes(x=cs, y=a.m, col=group, group=group)) +
   xlab(TeX('$\\frac{\\[MeAsp\\]}{K_{off}}$')) +
   theme(aspect.ratio = 1, legend.position = 'none')
 
+# gr = p +
+#   facet_grid(J~r0)
+# cs = p + facet_grid(J~.)
+# rws = p + facet_grid(.~r0)
 gr = p +
-  facet_grid(J~r0)
+  facet_grid(J~n)
 cs = p + facet_grid(J~.)
-rws = p + facet_grid(.~r0)
+rws = p + facet_grid(.~n)
 
 
-pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_rs-1,1)),
-               ggarrange(gr, cs, ncol = 2, widths = c(no_rs-3,1)),
+# pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_rs-1,1)),
+#                ggarrange(gr, cs, ncol = 2, widths = c(no_rs-3,1)),
+#                align = 'hv',
+#                heights = c(1,no_Js-1),
+#                nrow = 2)
+pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_ns-1,1)),
+               ggarrange(gr, cs, ncol = 2, widths = c(no_ns-3,1)),
                align = 'hv',
                heights = c(1,no_Js-1),
                nrow = 2)
@@ -127,18 +147,36 @@ PAR$group = NULL
 # format results
 Js = sort(PAR$J) %>% unique()
 r0s = sort(PAR$r0) %>% unique()
+ns = sort(PAR$n) %>% unique()
 
-m = array(NA, dim = c(length(Js), length(r0s), ncol(PAR)-5),
-          dimnames = list(Js, r0s, names(PAR)[6:ncol(PAR)]))
+# m = array(NA, dim = c(length(Js), length(r0s), ncol(PAR)-5),
+#           dimnames = list(Js, r0s, names(PAR)[6:ncol(PAR)]))
+m = array(NA, dim = c(length(Js), length(ns), ncol(PAR)-6),
+          dimnames = list(Js, ns, names(PAR)[7:ncol(PAR)]))
 
-for (c in 1:(ncol(PAR)-5)) {
+# for (c in 1:(ncol(PAR)-5)) {
+#   
+#   for (j.1 in Js) {
+#     for (r.1 in r0s) {
+#       
+#       k = which(PAR$J == j.1 & PAR$r0 == r.1)
+#       if (length(k) > 0) {
+#         m[which(dimnames(m)[[1]] == j.1),which(dimnames(m)[[2]] == r.1),c] = PAR[k[1], c+5]
+#       }
+#       
+#     }
+#   } 
+#   
+# }
+
+for (c in 1:(ncol(PAR)-6)) {
   
   for (j.1 in Js) {
-    for (r.1 in r0s) {
+    for (n.1 in ns) {
       
-      k = which(PAR$J == j.1 & PAR$r0 == r.1)
+      k = which(PAR$J == j.1 & PAR$n == n.1)
       if (length(k) > 0) {
-        m[which(dimnames(m)[[1]] == j.1),which(dimnames(m)[[2]] == r.1),c] = PAR[k[1], c+5]
+        m[which(dimnames(m)[[1]] == j.1),which(dimnames(m)[[2]] == n.1),c] = PAR[k[1], c+6]
       }
       
     }
@@ -157,7 +195,7 @@ plotMATRIX = function(cnt, param) {
                   panel.levelplot(...)
                 },
                 main=param,
-                xlab='r0',
+                xlab='n',
                 ylab='J')
   
   return(as.grob(h))

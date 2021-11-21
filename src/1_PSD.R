@@ -20,6 +20,16 @@ print('---------------------------------------------------------')
 
 
 ### INPUT ###
+# load experimental PSDs
+load("results/PSD_experiments.RData")
+
+if (met == "RB-") {
+  experimental = experimental$data$`RB-, QEEE, 0um MeAsp`
+} else if (met == "RB+") {
+  experimental = experimental$data$`RB+, QEQE`
+}
+
+
 setwd(paste0(outfol, 'PSD/'))
 getwd()
 
@@ -100,20 +110,28 @@ for (ii in 1:length(PSDs)) {
   
   if (ii == 1) {
     
+    plot(y = experimental$tbl$PSD,
+         x = experimental$tbl$frequency,
+         type = "l", xaxt = "n", yaxt = "n", ylab = "", xlab = "")
+    axis(side=4)
+    
+    par(new = T)
+    
     plot(y=cnt, x=as.numeric(names(cnt)),
          ylab = TeX("$log_{10}(A_{R}(\\omega))(s)$"),
          xlab = TeX("$log_{10}(\\frac{\\omega}{2 \\cdot \\pi})(Hz)$"),
          ylim = c(min(cnt)-1, max(cnt)+1),
          type = 'l', col=cols[ii])
     
+    
   } else {
     lines(y=cnt, x=as.numeric(names(cnt)),
           col=cols[ii])
   }
   
-  points(y=psdchar[1],x=psdchar[2],
-         pch = 16,cex=1.2,col=cols[ii])
-  abline(v=psdchar[3], lty='dashed', col=cols[ii])
+  # points(y=psdchar[1],x=psdchar[2],
+  #        pch = 16,cex=1.2,col=cols[ii])
+  # abline(v=psdchar[3], lty='dashed', col=cols[ii])
   
   allParams[[ii]] = psdchar
 }

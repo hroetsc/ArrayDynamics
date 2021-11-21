@@ -98,6 +98,7 @@ dr = try(drm(a~rep(cs, each=nrep), fct = LL.4()))
 if(! mode(dr) == 'character') {
   
   fkt = function(coeff, cs) {
+    
     b = coeff[1] %>% as.numeric()
     c = coeff[2] %>% as.numeric()
     d = coeff[3] %>% as.numeric()
@@ -113,18 +114,18 @@ if(! mode(dr) == 'character') {
   fkt.cv = fkt(coeff, cs)
   
   # plotting 
-  png(paste0('A_dr_met-', met, '.png'),
+  png(paste0('A_dr_',lattice,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'_met-',met,'.png'),
       width = 9, height = 5, units = 'in',
       res = 300)
   
-  plot(cs, a.m,
+  plot(log10(cs), a.m,
        ylim = c(0,.6),
        pch = 16,
-       ylab = TeX('<A> $\\pm$ SD'), xlab = TeX('$\\frac{\\[MeAsp\\]}{K_{off}}$'),
+       ylab = TeX('<A> $\\pm$ SD'), xlab = TeX('$log_{10} \\frac{\\[MeAsp\\]}{K_{off}}$'),
        main = TeX('$f(x) = c + \\frac{d-c}{1 + exp(b \\cdot (log(x) - log(e))}$'),
        sub = paste0('b=', coeff[1], ', c=', coeff[2], ', d=', coeff[3], ', e=', coeff[4]))
-  arrows(cs, a.m-a.sd, cs, a.m+a.sd, length=0.05, angle=90, code=3)
-  lines(y~x, data = fkt.cv)
+  arrows(log10(cs), a.m-a.sd, log10(cs), a.m+a.sd, length=0.05, angle=90, code=3)
+  lines(y~log10(x+1e-5), data = fkt.cv)
   
   dev.off()
   
@@ -134,15 +135,30 @@ if(! mode(dr) == 'character') {
 # ----- fit MWC model -----
 
 fitMWC = function(a, m, cs, k0, k1, Kon_) {
+  
   c = rep(cs, each=nrep)
+  c = c+1e-01
   
-  f0 = k0 - k1*m + log((1 + c) / (1 + c/Kon_))
-  fit = nls(a~1/(1+exp(N*f0)), start=list(N=4))
+  f0 = function(Kon_, k1,c,m) {
+    f = k0 - k1*m + log((1 + c) / (1 + c/Kon_))
+    return(f)
+  }
   
-  N = environment(fit[["m"]][["fitted"]])[["internalPars"]]
+  fit = nls(a~1/(1+exp(N*f0(Kon_, k1,c,m))),
+            start= list(N=10, Kon_=150),
+            lower = list(N=1, Kon_=50),
+            #na.action = "exclude",
+            upper = list(N=500, Kon_=300),
+            algorithm = "port",
+            trace = T)
+  
+  print(fit)
+  
+  N = environment(fit[["m"]][["fitted"]])[["internalPars"]][1]
+  Kon_ = environment(fit[["m"]][["fitted"]])[["internalPars"]][2]
   
   x = c
-  y = 1/(1+exp(N*f0))
+  y = 1/(1+exp(N*f0(Kon_, k1,c,m)))
   
   return(list(N=N, fit=fit, x=x, y=y))
 }
@@ -150,22 +166,22 @@ fitMWC = function(a, m, cs, k0, k1, Kon_) {
 mwc.fit = fitMWC(a, m, cs, k0, k1, Kon_)
 
 # plotting 
-png(paste0('A_Ns_met-', met, '.png'),
+png(paste0('A_Ns_',lattice,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'_met-',met,'.png'),
     width = 9, height = 5, units = 'in',
     res = 300)
 
-plot(cs, a.m,
+plot(log10(cs), a.m,
      ylim = c(min(a.m, mwc.fit$y)-.1, max(a.m, mwc.fit$y)+.1),
      pch = 16,
      ylab = TeX('<A> $\\pm$ SD'), xlab = TeX('$\\frac{\\[MeAsp\\]}{K_{off}}$'),
      main = TeX('$<A>_{MWC} = \\frac{1}{1 + exp(N \\cdot f_0)}$'),
      sub = paste0('N=', round(mwc.fit$N, 4)))
-arrows(cs, a.m-a.sd, cs, a.m+a.sd, length=0.05, angle=90, code=3)
+arrows(log10(cs), a.m-a.sd, log10(cs), a.m+a.sd, length=0.05, angle=90, code=3)
 
-points(mwc.fit$x, mwc.fit$y,
+points(log10(mwc.fit$x-.1), mwc.fit$y,
        pch=8, col='firebrick', cex=.5)
 k = order(mwc.fit$x)
-lines(mwc.fit$x[k], mwc.fit$y[k], col='firebrick')
+lines(log10(mwc.fit$x[k]-.1), mwc.fit$y[k], col='firebrick')
 
 legend('topright',
        legend = c('simulated', 'fitted'),

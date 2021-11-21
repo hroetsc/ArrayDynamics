@@ -50,7 +50,7 @@ rule simulation:
   params:
     cores=features['replicates'],  # number of cores and number of replicates have to be identical
     rep=features['replicates'],
-    time=3000
+    time=2000
   benchmark:
     join(benchmarks, 'simulation.json')
   log:
@@ -156,7 +156,8 @@ checkpoint check_plotfluctuations:
 rule calculatepsd:
   input:
     fluct = 'results/SIMresults/plotfluctuations.txt',
-    mastertbl = 'MASTER.csv'
+    mastertbl = 'MASTER.csv',
+    PSDexp = 'results/PSD_experiments.RData'
   output:
     psd = 'results/SIMresults/calculatepsd.txt'
   benchmark:

@@ -144,8 +144,12 @@ dev.off()
 
 names(allParams) = names(interesting)
 
+experimental = list(allParams = allParams,
+                    data = EXP[interesting])
+names(experimental[["data"]]) = names(interesting)
+
 ### OUTPUT ###
-# save(allParams, file = 'results/PSD_experiments.RData')
-save(allParams, file = unlist(snakemake@output[['PSDexp']]))
+# save(experimental, file = 'results/PSD_experiments.RData')
+save(experimental, file = unlist(snakemake@output[['PSDexp']]))
 
 

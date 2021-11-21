@@ -19,8 +19,8 @@ rule all:
         sim = 'results/SIMresults/simulation.done',
         grids = 'results/SIMresults/plotgrids.done',
         psd = 'results/SIMresults/calculatepsd.done',
-        dr = 'results/SIMresults/calculatedoseresponse.done',
-        agg_psd = 'results/SIMresults/aggregatepsd.done',
-        agg_dr = 'results/SIMresults/aggregatedoseresponse.done'
+        dr = 'results/SIMresults/calculatedoseresponse.done'
+        #agg_psd = 'results/SIMresults/aggregatepsd.done',
+        #agg_dr = 'results/SIMresults/aggregatedoseresponse.done'
         
 

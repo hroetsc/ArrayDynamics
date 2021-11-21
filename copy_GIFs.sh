@@ -1,9 +1,11 @@
 #!/bin/bash
 
-for J in 0.4 0.42 0.44 0.46 0.48; do
-	for r in 0.01 0.1 0.3 1 3 10; do
+for J in 0.44 0.46 0.48; do
+	for n in 507 768 972 3072 5043 10092; do
 
-		cp -rf results/SIMresults/Kagome_J"$J"_r"$r"/GIFs/SIMresultsA_c0_met-RB+_rep10.gif results/download/GIFs/Kagome_J"$J"_r"$r"_A_c0_met-RB+_rep10.gif
+		cp -rf results/SIMresults/Kagome_J"$J"_r10_n"$n"/GIFs/SIMresultsA_c0_met-RB+_rep10.gif results/download/GIFs/Kagome_J"$J"_r10_n"$n"_A_c0_met-RB+_rep10.gif
+		cp -rf results/SIMresults/Kagome_J"$J"_r10_n"$n"/PSD/A_c0_met-RB+.png results/download/PSDs/Kagome_J"$J"_r10_n"$n"_A_c0_met-RB+.png
+		cp -rf results/SIMresults/Kagome_J"$J"_r10_n"$n"/PSD/A_c0_met-RB-.png results/download/PSDs/Kagome_J"$J"_r10_n"$n"_A_c0_met-RB-.png
 
 	done
 done

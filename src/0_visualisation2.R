@@ -60,7 +60,7 @@ cols = heat.colors(length(fs), alpha = .5)
 #----- plot activity -----
 setwd(paste0(outfol, 'fluct/'))
 
-png(paste0('fluctuations_',lattice,'_J',paste(J, collapse = '-'),'_r',r_0,'_c',c,'_met-',met,'.png'),
+png(paste0('fluctuations_',lattice,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'_met-',met,'.png'),
     width = 9, height = 9, units = 'in',
     res = 300)
 
