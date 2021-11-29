@@ -9,6 +9,7 @@ library(stringr)
 library(latex2exp)
 
 source('src/constants.R')
+T = 400
 
 ### INPUT ###
 fs = list.files(path = 'data', pattern = '.txt',
@@ -34,7 +35,7 @@ parseData = function(f) {
   names(tbl) = c('frequency', 'PSD')
   
   # convert FRET ration into activity
-  tbl$PSD = tbl$PSD / (lambda^2)
+  tbl$PSD = tbl$PSD / ((lambda^2)*T)
   # mu = tbl$PSD[350:400] %>% mean()  # eps^2/lambda^2
   # tbl$PSD = tbl$PSD - mu+epsilon
   
@@ -97,9 +98,12 @@ characterisePSD = function(freq, psd) {
 }
 
 # ----- plotting -----
+names(EXP)
 
-interesting = which(str_detect(names(EXP), 'A-0.5'))
-interesting = c(interesting, 8)
+interesting = which(names(EXP) %in% c("data/PSD/PSD_RBminus/Mean_PSD_QEEEs_MeAsp-0uM_A-0.5.txt",
+                                      "data/PSD/PSD_RBminus/Mean_PSD_QEQEs_MeAsp-30uM_A-0.5.txt",
+                                      "data/PSD/PSD_RBplus/Mean_PSD_QEQEs.txt"))
+
 names(interesting) = c('RB-, QEEE, 0um MeAsp',
                        'RB-, QEQE, 30um MeAsp',
                        'RB+, QEQE')
@@ -149,7 +153,7 @@ experimental = list(allParams = allParams,
 names(experimental[["data"]]) = names(interesting)
 
 ### OUTPUT ###
-# save(experimental, file = 'results/PSD_experiments.RData')
-save(experimental, file = unlist(snakemake@output[['PSDexp']]))
+save(experimental, file = 'results/PSD_experiments.RData')
+#save(experimental, file = unlist(snakemake@output[['PSDexp']]))
 
 

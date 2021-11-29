@@ -50,7 +50,7 @@ rule simulation:
   params:
     cores=features['replicates'],  # number of cores and number of replicates have to be identical
     rep=features['replicates'],
-    time=2000
+    time=2500
   benchmark:
     join(benchmarks, 'simulation.json')
   log:

@@ -48,7 +48,7 @@ load(fs)
 # ----- calculate Power Spectral Density
 calcPSD = function(meanA) {
   # pick steady state
-  meanA.steady = meanA[1000:length(meanA)]
+  meanA.steady = meanA[1500:length(meanA)]
   
   # calculate spectral density
   N = length(meanA.steady)

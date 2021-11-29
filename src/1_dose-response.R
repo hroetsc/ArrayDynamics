@@ -134,36 +134,39 @@ if(! mode(dr) == 'character') {
 
 # ----- fit MWC model -----
 
-fitMWC = function(a, m, cs, k0, k1, Kon_) {
+fitMWC = function(a, m, cs, k0, k1, Kon, Koff) {
   
   c = rep(cs, each=nrep)
-  c = c+1e-01
+  c = c
   
-  f0 = function(Kon_, k1,c,m) {
-    f = k0 - k1*m + log((1 + c) / (1 + c/Kon_))
+  f0 = function(Kon, Koff, c) {
+    c = c*Koff
+    f = k0 - k1*m + log((1 + c/Koff) / (1 + c/Kon))
     return(f)
   }
   
-  fit = nls(a~1/(1+exp(N*f0(Kon_, k1,c,m))),
-            start= list(N=10, Kon_=150),
-            lower = list(N=1, Kon_=50),
-            #na.action = "exclude",
-            upper = list(N=500, Kon_=300),
-            algorithm = "port",
+  fit = nls(a~1/(1+exp(N*f0(Kon, Koff, c))),
+            start= list(N=10),
             trace = T)
+  
+  
+  # lower = list(N=1, Koff=15, Kon=2800),
+  # upper = list(N=500, Koff=25, Kon=3200),
+  # algorithm = "port",
   
   print(fit)
   
   N = environment(fit[["m"]][["fitted"]])[["internalPars"]][1]
-  Kon_ = environment(fit[["m"]][["fitted"]])[["internalPars"]][2]
+  # Koff = environment(fit[["m"]][["fitted"]])[["internalPars"]][2]
+  # Kon = environment(fit[["m"]][["fitted"]])[["internalPars"]][3]
   
   x = c
-  y = 1/(1+exp(N*f0(Kon_, k1,c,m)))
+  y = 1/(1+exp(N*f0(Kon, Koff, c)))
   
   return(list(N=N, fit=fit, x=x, y=y))
 }
 
-mwc.fit = fitMWC(a, m, cs, k0, k1, Kon_)
+mwc.fit = fitMWC(a, m, cs, k0, k1, Kon, Koff)
 
 # plotting 
 png(paste0('A_Ns_',lattice,'_J',paste(J, collapse = '-'),'_r',r_0,'_X',X,'_c',c,'_met-',met,'.png'),
@@ -178,10 +181,10 @@ plot(log10(cs), a.m,
      sub = paste0('N=', round(mwc.fit$N, 4)))
 arrows(log10(cs), a.m-a.sd, log10(cs), a.m+a.sd, length=0.05, angle=90, code=3)
 
-points(log10(mwc.fit$x-.1), mwc.fit$y,
+points(log10(mwc.fit$x), mwc.fit$y,
        pch=8, col='firebrick', cex=.5)
 k = order(mwc.fit$x)
-lines(log10(mwc.fit$x[k]-.1), mwc.fit$y[k], col='firebrick')
+lines(log10(mwc.fit$x[k]), mwc.fit$y[k], col='firebrick')
 
 legend('topright',
        legend = c('simulated', 'fitted'),
