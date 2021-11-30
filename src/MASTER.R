@@ -40,14 +40,14 @@ print('--------------------------------')
 
 ### MAIN PART ###
 # in case lattice is Square --> all combinations of J
-if (lattice == 'Square') {
-  
-  Jexp = expand.grid(J, J, J) %>%
-    as.data.frame() %>%
-    unique()
-  
-  J = apply(Jexp, 1, paste, collapse='-')
-}
+# if (lattice == 'Square') {
+#   
+#   Jexp = expand.grid(J, J, J) %>%
+#     as.data.frame() %>%
+#     unique()
+#   
+#   J = apply(Jexp, 1, paste, collapse='-')
+# }
 
 # create all combinations
 MASTER = crossing(lattice, met,J,r_0,X,c,rep) %>%

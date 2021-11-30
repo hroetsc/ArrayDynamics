@@ -80,10 +80,10 @@ function calcJ(i, A, adjL, n, J)
         return sum(j)
 
     else
-        k = adjL[i,:]
-        j = sum(@. 2J[1]*(2A[collect(skipmissing(k[1:2]))]-1)) +
-            sum(@. 2J[2]*(2A[collect(skipmissing(k[3:4]))]-1)) +
-            sum(@. 2J[3]*(2A[collect(skipmissing(k[5:6]))]-1))
+        μ = collect(1)
+        j = sum(2J[1]*(2A[collect(skipmissing(adjL[i,1:2]))] .- μ)) +
+            sum(2J[2]*(2A[collect(skipmissing(adjL[i,3:4]))] .- μ)) +
+            sum(2J[3]*(2A[collect(skipmissing(adjL[i,5:6]))] .- μ))
         return j
 
     end
