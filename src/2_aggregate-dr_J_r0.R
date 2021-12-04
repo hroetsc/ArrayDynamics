@@ -43,12 +43,16 @@ extractPARAMS = function(f) {
   
   load(f)
   params = str_split(f, pattern = '/', simplify = T)[,3]
-  J = str_extract(params, pattern = 'J0.[^_]+') %>%
-    str_remove('J') %>%
-    as.numeric()
   
-  r0 = str_extract(params, pattern = 'r[^_]+') %>%
-    str_remove('r') %>%
+  J = str_extract(params, pattern = 'J0.[^_]+') %>%
+    str_remove('J')
+  
+  if (lattice == "Kagome") {
+    J = as.numeric(J)
+  }
+  
+  r0 = str_extract(params, pattern = '_r[^_]+') %>%
+    str_remove('_r') %>%
     as.numeric()
   
   n = str_extract(params, pattern = 'n[^$]+') %>%
@@ -94,8 +98,16 @@ no_Js = if(no_Js<4) { 5.5 }
 no_ns = unique(PAR$n) %>% length()
 no_ns = if(no_ns<4) { 5.5 }
 
-PAR$group = as.factor(PAR$r0*PAR$J)
-#PAR$group = as.factor(PAR$n*PAR$J)
+if (lattice == "Square") {
+  jj = str_split_fixed(PAR$J, coll("-"), Inf)[,1] %>%
+    as.numeric()
+  PAR$group = as.factor(PAR$r0*jj)
+} else {
+  PAR$group = as.factor(PAR$r0*PSD$J)
+}
+
+
+PAR$J = as.factor(PAR$J)
 
 p = ggplot(PAR, aes(x=cs, y=a.m, col=group, group=group)) +
   geom_point(aes(x=cs, y=a.m))+
@@ -122,6 +134,9 @@ pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_rs-1,1)),
 pdf(paste0('results/dose-response_simulations_J-r0_', lattice, '_met-', met, '.pdf'),
     height = 16, width = 16)
 print(pn)
+print(gr)
+print(cs)
+print(rws)
 dev.off()
 
 
@@ -183,6 +198,6 @@ ggsave(filename = paste0('results/dose-response_simulations_J-r0_', lattice, '_m
 
 
 ### OUTPUT ###
-#write(paste0('aggregation of dose-response curves finished sucessfully at ', Sys.time()),
+# write(paste0('aggregation of dose-response curves finished sucessfully at ', Sys.time()),
 #      file = unlist(snakemake@output[['agg_dr']]))
- 
+#  

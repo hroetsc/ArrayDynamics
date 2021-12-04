@@ -45,11 +45,14 @@ extractPARAMS = function(f, ret_psd) {
   load(f)
   params = str_split(f, pattern = '/', simplify = T)[,3]
   J = str_extract(params, pattern = 'J0.[^_]+') %>%
-    str_remove('J') %>%
-    as.numeric()
+    str_remove('J')
   
-  r0 = str_extract(params, pattern = 'r[^_]+') %>%
-    str_remove('r') %>%
+  if (lattice == "Kagome") {
+    J = as.numeric(J)
+  }
+  
+  r0 = str_extract(params, pattern = '_r[^_]+') %>%
+    str_remove('_r') %>%
     as.numeric()
   
   n = str_extract(params, pattern = 'n[^$]+') %>%
@@ -98,11 +101,23 @@ PSD = plyr::ldply(PSD)
 
 # ----- grid of PSDs -----
 no_rs = unique(PSD$r0) %>% length()
-no_Js = unique(PSD$J) %>% length()
-no_ns = unique(PSD$n) %>% length()
-x = mean(no_Js, no_ns) - 1
+no_rs = if(no_rs<4) { 5.5 }
 
-PSD$group = as.factor(PSD$r0*PSD$J)
+no_Js = unique(PSD$J) %>% length()
+no_Js = if(no_Js<4) { 5.5 }
+
+no_ns = unique(PSD$n) %>% length()
+no_ns = if(no_ns<4) { 5.5 }
+
+if (lattice == "Square") {
+  jj = str_split_fixed(PSD$J, coll("-"), Inf)[,1] %>%
+    as.numeric()
+  PSD$group = as.factor(PSD$r0*jj)
+} else {
+  PSD$group = as.factor(PSD$r0*PSD$J)
+}
+
+PSD$J = as.factor(PSD$J)
 
 p = ggplot(PSD, aes(x=freq, y=psd, col=group)) +
   geom_smooth(aes(group=group)) +
@@ -130,6 +145,9 @@ pn = ggarrange(ggarrange(rws, NULL, ncol = 2, widths = c(no_rs-1,1)),
 pdf(paste0('results/PSD_simulations_J-r0_', lattice, '_met-', met, '.pdf'),
     height = 16, width = 16)
 print(pn)
+print(gr)
+print(cs)
+print(rws)
 dev.off()
 
 

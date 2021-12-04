@@ -207,13 +207,15 @@ rule aggregatepsd:
     PSDexp = 'results/PSD_experiments.RData'
   output:
     agg_psd = 'results/SIMresults/aggregatepsd.txt'
+  params:
+    lattice=features['lattice']
   benchmark:
     join(benchmarks, 'aggregatepsd.json')
   log:
     join(logs, 'aggregatepsd.txt')
   shell:
-    'Rscript src/2_aggregate-psd.R --met RB+; \
-    Rscript src/2_aggregate-psd.R --met RB-;\
+    'Rscript src/2_aggregate-psd_J_r0.R --met RB+ --lattice {params.lattice}; \
+    Rscript src/2_aggregate-psd_J_r0.R --met RB- --lattice {params.lattice};\
     echo "aggregation of PSDs finished sucessfully!" > results/SIMresults/aggregatepsd.txt'
 
 checkpoint check_aggregatepsd:
@@ -270,12 +272,14 @@ rule aggregatedoseresponse:
     dr = 'results/SIMresults/calculatedoseresponse.txt'
   output:
     agg_dr = 'results/SIMresults/aggregatedoseresponse.txt'
+  params:
+    lattice=features['lattice']
   benchmark:
     join(benchmarks, 'aggregatedoseresponse.json')
   log:
     join(logs, 'aggregatedoseresponse.txt')
   shell:
-    'Rscript src/2_aggregate-dr.R --met RB-;\
+    'Rscript src/2_aggregate-dr_J_r0.R --met RB- --lattice {params.lattice};\
     echo "aggregation of dose-response curves finished sucessfully!" > results/SIMresults/aggregatedoseresponse.txt'
 
 checkpoint check_aggregatedoseresponse:
